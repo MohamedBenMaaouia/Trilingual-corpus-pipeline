@@ -26,8 +26,17 @@ lint:
 	$(error make lint: not implemented yet (Story 0.4, ruff + mypy))
 
 # clean-* delete MinIO data and never touch corpus-bronze (invariant 1).
+# Deleting data needs an explicit: make clean-silver CONFIRM=yes
+# clean-gold empties corpus-gold, which also holds signature_store and dup_clusters:
+# they describe what gold contains, so they go with it.
 clean-silver:
-	$(error make clean-silver: not implemented yet (Story 0.2, needs the MinIO client service))
+ifneq ($(CONFIRM),yes)
+	$(error clean-silver deletes all of corpus-silver. Rerun with CONFIRM=yes)
+endif
+	docker compose run --rm --entrypoint /bin/sh minio-init /minio-clean.sh corpus-silver
 
 clean-gold:
-	$(error make clean-gold: not implemented yet (Story 0.2, needs the MinIO client service))
+ifneq ($(CONFIRM),yes)
+	$(error clean-gold deletes all of corpus-gold (incl. signature_store, dup_clusters). Rerun with CONFIRM=yes)
+endif
+	docker compose run --rm --entrypoint /bin/sh minio-init /minio-clean.sh corpus-gold

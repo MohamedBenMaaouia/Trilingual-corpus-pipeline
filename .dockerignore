@@ -1,0 +1,10 @@
+# Only what images need goes into the build context.
+.git
+.venv
+.env
+dist
+docs
+.claude
+CLAUDE.md
+**/__pycache__
+.*_cache

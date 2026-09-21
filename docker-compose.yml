@@ -1,0 +1,228 @@
+name: corpus
+
+# Shared by every Spark service: built once, tagged once (docker/spark/Dockerfile).
+x-spark: &spark
+  build:
+    context: .
+    dockerfile: docker/spark/Dockerfile
+  image: corpus-spark:dev
+
+# Shared by every Airflow service: same image, same config, same mounts.
+# Started from the official Airflow 3.3.2 compose file, trimmed: LocalExecutor,
+# no Celery/Redis/workers/triggerer, SimpleAuthManager (DECISIONS S0-05).
+x-airflow: &airflow
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+    additional_contexts:
+      spark: service:spark-master   # the jars come from the Spark image
+  image: corpus-airflow:dev
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"   # no login: localhost only
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?set AIRFLOW_JWT_SECRET in .env}
+    # Airflow 3: running tasks report to the api-server, not to the database.
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # Read by corpus.config inside Spark jobs (Story 0.3).
+    CORPUS_ENV: ${CORPUS_ENV:-local}
+    CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
+    CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/corpus/src:ro          # live code for the driver (editable install)
+    - airflow-logs:/opt/airflow/logs    # shared: the scheduler writes task logs, the UI reads them
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+
+  # Object storage (S3 API) for every layer: bronze, silver, gold, meta.
+  # Community MinIO is no longer on Docker Hub; quay.io keeps the last
+  # community release, pinned here (DECISIONS S0-05).
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Runs once after MinIO is healthy: buckets, event-log placeholder, service user.
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
+      CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+    volumes:
+      - ./docker/minio-init.sh:/minio-init.sh:ro
+      - ./docker/minio-clean.sh:/minio-clean.sh:ro   # used by make clean-silver / clean-gold
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+
+  # Relational store: Airflow metadata (db airflow) and pipeline telemetry (db corpus).
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Default would be a db named after the user; our init script creates the real ones.
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # -h localhost: during first-time init Postgres listens only on a local socket,
+      # so a TCP check can't report "ready" before the init script has finished.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Standalone cluster manager: tracks workers, hands executors to applications.
+  spark-master:
+    <<: *spark
+    command: spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
+    ports:
+      - "7077:7077"   # cluster RPC: workers register, drivers ask for executors
+      - "8080:8080"   # master UI
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/json/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Workers launch executors. Sizing: 2 cores × 3g each (DECISIONS S0-05);
+  # the memory is executor JVM heap only, Python workers use memory on top.
+  spark-worker-1:
+    <<: *spark
+    command: spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --host spark-worker-1 --cores 2 --memory 3g --webui-port 8081
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./src:/opt/corpus/src:ro   # live code for executors (editable install)
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/json/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  spark-worker-2:
+    <<: *spark
+    command: spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --host spark-worker-2 --cores 2 --memory 3g --webui-port 8082
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./src:/opt/corpus/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8082/json/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Serves the Spark UI of finished applications from their event logs.
+  # Event logging itself is switched on by each driver (DECISIONS S0-01).
+  spark-history:
+    <<: *spark
+    command: spark-class org.apache.spark.deploy.history.HistoryServer
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      SPARK_HISTORY_OPTS: >-
+        -Dspark.history.fs.logDirectory=s3a://corpus-meta/spark-events
+        -Dspark.history.fs.update.interval=10s
+        -Dspark.hadoop.fs.s3a.endpoint=http://minio:9000
+        -Dspark.hadoop.fs.s3a.path.style.access=true
+      # S3A reads these standard AWS variables; keeps keys out of the command line.
+      AWS_ACCESS_KEY_ID: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
+      AWS_SECRET_ACCESS_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+    ports:
+      - "18080:18080"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:18080/api/v1/applications"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  # One-shot: create/upgrade Airflow's tables in the airflow database, then exit.
+  airflow-init:
+    <<: *airflow
+    command: db migrate
+
+  # UI + REST API + the execution API that running tasks report to.
+  # Host port 8090: 8080 belongs to the Spark master UI.
+  airflow-api-server:
+    <<: *airflow
+    command: api-server
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  # Decides what runs when. With LocalExecutor, tasks run as subprocesses of this
+  # container, so every Spark driver (client mode) lives here and serves its UI on 4040.
+  airflow-scheduler:
+    <<: *airflow
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "4040:4040"   # Spark driver UI while a job runs
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  # Parses files in dags/ and stores the DAG structure in the database (required in Airflow 3).
+  airflow-dag-processor:
+    <<: *airflow
+    command: dag-processor
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+volumes:
+  minio-data:
+  postgres-data:
+  airflow-logs:

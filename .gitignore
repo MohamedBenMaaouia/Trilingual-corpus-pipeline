@@ -1,0 +1,16 @@
+# Private: stays on this machine, never pushed
+CLAUDE.md
+.claude/
+docs/
+
+# Secrets (invariant 14: .env holds real credentials; .env.example is committed)
+.env
+
+# Python and tooling output, regenerated on demand
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

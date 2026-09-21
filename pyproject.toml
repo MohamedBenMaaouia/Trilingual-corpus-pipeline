@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "corpus"
+version = "0.1.0"
+description = "Trilingual (en/fr/ar) web corpus pipeline: Common Crawl to a clean, deduplicated dataset"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "fastwarc>=0.15",           # WET/WARC reader (S1–S2)
+    "fasttext-wheel>=0.9.2",    # language ID model runtime (S3)
+    "numpy<2",                  # fastText's predict() breaks on NumPy 2
+    "xxhash>=3",                # stable hashes: doc_id, salts, dedup (never Python's hash())
+    "boto3>=1.34",              # S3/MinIO client for downloads and object listing (S1)
+    "psycopg2-binary>=2.9",     # Postgres driver: control plane, metrics (S1)
+    "pydantic>=2",              # typed config and records
+    "pydantic-settings>=2",     # reads env vars into the config model (S0)
+    "tldextract>=5",            # registered domain from a URL (S2–S3)
+    "pyarrow>=14",              # Arrow: Spark<->pandas transfer, pandas_udf
+    "pandas>=2,<3",             # pandas_udf batches; PySpark 3.5 predates pandas 3
+]
+
+[project.optional-dependencies]
+spark = [
+    "pyspark>=3.5,<3.6",        # 3.5 line: parity with Databricks 15.4 LTS
+    "delta-spark>=3.2,<3.4",    # Delta 3.2–3.3 are built for Spark 3.5
+]
+
+[dependency-groups]
+dev = [
+    "corpus[spark]",   # the dev env also gets pyspark + delta (for tests, IDE, mypy)
+    "pytest>=8",       # test runner
+    "chispa>=0.10",    # DataFrame equality assertions for Spark tests
+    "ruff>=0.6",       # linter + formatter
+    "mypy>=1.10",      # static type checker
+    "duckdb>=1",       # quick SQL over Parquet outputs when inspecting runs
+    "matplotlib>=3.8", # plots: LSH curve (S4), before/after charts
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/corpus"]

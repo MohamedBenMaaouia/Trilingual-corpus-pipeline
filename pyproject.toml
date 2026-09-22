@@ -40,3 +40,28 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/corpus"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, B likely bugs, UP modern syntax, SIM simplifications
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+# Teaches mypy that settings fields may come from the environment, not only __init__ args.
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# importlib: test files don't need __init__.py, and same-named files in unit/ and
+# integration/ don't collide. No cache: the repo is mounted read-only in the container.
+addopts = ["--import-mode=importlib", "-p", "no:cacheprovider"]
+filterwarnings = [
+    # fastwarc 1.0.9 imports its own legacy module on `import fastwarc`; not our code.
+    "ignore:Use the new Reader and Writer classes from stream_io instead:DeprecationWarning",
+]

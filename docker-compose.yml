@@ -5,6 +5,7 @@ x-spark: &spark
   build:
     context: .
     dockerfile: docker/spark/Dockerfile
+    target: runtime
   image: corpus-spark:dev
 
 # Shared by every Airflow service: same image, same config, same mounts.
@@ -221,6 +222,22 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
+
+  # Test runner for make test / make lint. Profile "tools": never started by make up.
+  # Same image as the cluster plus dev tools; the repo is mounted read-only, so tests
+  # always see the current code and can't modify it.
+  tests:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+      target: test
+    image: corpus-spark-test:dev
+    profiles: ["tools"]
+    working_dir: /opt/corpus
+    volumes:
+      - .:/opt/corpus:ro
+    entrypoint: ["python", "-m"]
+    command: ["pytest"]
 
 volumes:
   minio-data:

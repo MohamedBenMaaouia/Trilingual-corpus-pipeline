@@ -6,6 +6,13 @@ from corpus.config import get_settings
 from corpus.config.local import LocalSettings
 from corpus.io import spark_events_path
 
+# Delta Lake: SQL extensions + a catalog that understands Delta tables.
+# Shared by the cluster session and the test session (tests/conftest.py).
+DELTA_CONF = {
+    "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension",
+    "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+}
+
 
 def get_session(app_name: str) -> SparkSession:
     """Return a session. On Databricks, reuse the runtime's active session."""
@@ -30,9 +37,7 @@ def local_conf(settings: LocalSettings) -> dict[str, str]:
         # Event logs are a driver setting; the history server reads the same folder.
         "spark.eventLog.enabled": "true",
         "spark.eventLog.dir": spark_events_path(),
-        # Delta Lake: SQL extensions + a catalog that understands Delta tables.
-        "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension",
-        "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        **DELTA_CONF,
         # S3A -> MinIO. Path-style: bucket in the path (minio:9000/corpus-bronze/...),
         # because MinIO has no per-bucket hostnames (corpus-bronze.minio:9000).
         "spark.hadoop.fs.s3a.endpoint": settings.s3_endpoint,

@@ -54,5 +54,5 @@ def test_azure_reuses_the_active_session(monkeypatch: pytest.MonkeyPatch) -> Non
     runtime_session = object()
     monkeypatch.setattr(SparkSession, "getActiveSession", staticmethod(lambda: runtime_session))
     # If get_session tried to build a session, this would blow up.
-    monkeypatch.setattr(session_module, "local_conf", lambda _: pytest.fail("built a local session"))
+    monkeypatch.setattr(session_module, "local_conf", lambda _: pytest.fail("built a session"))
     assert get_session("any-app") is runtime_session

@@ -3,7 +3,8 @@
 
 # --- Layer 1: OS, Python 3.11, Java 17 ---------------------------------------
 # bookworm (Debian 12): the last Debian release that packages OpenJDK 17.
-FROM python:3.11-slim-bookworm
+# Stage "runtime": the cluster image. Stage "test" (at the end) adds dev tools.
+FROM python:3.11-slim-bookworm AS runtime
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps curl \
@@ -61,3 +62,14 @@ ENV PATH=$SPARK_HOME/bin:$PATH \
 COPY src ./src
 RUN --mount=type=cache,target=/uv-cache \
     UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark
+
+# --- Stage "test": runtime + the dev group (pytest, chispa, ruff, mypy) ------
+# make test / make lint run here: same Linux, Java, Spark and jars as the cluster,
+# never PySpark on native Windows (T16). The dev tools never reach the cluster.
+FROM runtime AS test
+RUN --mount=type=cache,target=/uv-cache \
+    UV_CACHE_DIR=/uv-cache uv sync --frozen --group dev --extra spark
+# The repo is mounted read-only at /opt/corpus: tool caches go to /tmp instead.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    MYPY_CACHE_DIR=/tmp/mypy_cache \
+    RUFF_CACHE_DIR=/tmp/ruff_cache

@@ -79,7 +79,9 @@ def test_azure_profile_requires_its_roots(monkeypatch: pytest.MonkeyPatch) -> No
 def test_azure_profile_is_selected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORPUS_ENV", "azure")
     for layer in ("bronze", "silver", "gold", "meta"):
-        monkeypatch.setenv(f"CORPUS_{layer.upper()}_ROOT", f"abfss://corpus-{layer}@acct.dfs.core.windows.net")
+        monkeypatch.setenv(
+            f"CORPUS_{layer.upper()}_ROOT", f"abfss://corpus-{layer}@acct.dfs.core.windows.net"
+        )
     assert isinstance(get_settings(), AzureSettings)
 
 

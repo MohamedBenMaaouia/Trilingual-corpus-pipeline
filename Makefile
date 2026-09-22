@@ -19,11 +19,16 @@ logs:
 build:
 	uv build --wheel
 
+# pytest in a Linux container with the cluster's Java/Spark/jars (T16), never on
+# native Windows. --build: the image is rebuilt from cache when a Dockerfile changes.
 test:
-	$(error make test: not implemented yet (Story 0.4, runs pytest in a Linux container))
+	docker compose run --rm --build tests
 
+# Same container as make test. Checks only; to fix formatting: uv run ruff format .
 lint:
-	$(error make lint: not implemented yet (Story 0.4, ruff + mypy))
+	docker compose run --rm --build tests ruff check .
+	docker compose run --rm tests ruff format --check .
+	docker compose run --rm tests mypy
 
 # clean-* delete MinIO data and never touch corpus-bronze (invariant 1).
 # Deleting data needs an explicit: make clean-silver CONFIRM=yes

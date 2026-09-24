@@ -27,8 +27,8 @@ from pathlib import Path
 import pytest
 from psycopg2.extensions import connection as Connection
 
-from corpus.acquisition.control import SegmentControl
-from corpus.acquisition.manifest import Segment
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.manifest import Segment
 from corpus.io import bronze_object, bronze_tmp_object, split_s3a
 from corpus.store import delete_object, object_exists, s3_client
 

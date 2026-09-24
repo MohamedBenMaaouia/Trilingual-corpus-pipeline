@@ -1,10 +1,10 @@
-"""corpus.acquisition.manifest: manifest parsing and reproducible sampling (task 1.1.3)."""
+"""corpus.bronze.manifest: manifest parsing and reproducible sampling (task 1.1.3)."""
 
 import gzip
 
 import pytest
 
-from corpus.acquisition.manifest import (
+from corpus.bronze.manifest import (
     BASE_URL,
     Segment,
     parse_wet_paths,

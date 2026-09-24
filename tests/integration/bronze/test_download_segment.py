@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from corpus.acquisition.manifest import Segment
-from corpus.ingest.download import DownloadError, download_segment, http_session, staging_path
+from corpus.bronze.download import DownloadError, download_segment, http_session, staging_path
+from corpus.bronze.manifest import Segment
 from corpus.io import bronze_object, bronze_tmp_object
 from corpus.store import delete_object, object_exists, object_size
 

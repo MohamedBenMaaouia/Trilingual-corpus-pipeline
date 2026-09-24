@@ -1,4 +1,4 @@
-"""corpus.ingest.download.http_session: retries, backoff scope and courtesy header.
+"""corpus.bronze.download.http_session: retries, backoff scope and courtesy header.
 
 A tiny HTTP server runs inside the test, so the retry behaviour is exercised for
 real without touching the network. backoff_factor=0 keeps it instant.
@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 import requests
 
-from corpus.ingest.download import USER_AGENT, http_session
+from corpus.bronze.download import USER_AGENT, http_session
 
 
 @contextmanager

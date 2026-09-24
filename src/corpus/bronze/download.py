@@ -17,8 +17,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from corpus.acquisition.control import SegmentControl
-from corpus.acquisition.manifest import Segment
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.manifest import Segment
 from corpus.io import bronze_object, bronze_tmp_object
 from corpus.store import promote, put_file
 

@@ -1,11 +1,11 @@
-"""corpus.ingest.download validation: size, gzip completeness, decompression cap."""
+"""corpus.bronze.download validation: size, gzip completeness, decompression cap."""
 
 import gzip
 from pathlib import Path
 
 import pytest
 
-from corpus.ingest.download import DownloadError, validate_gzip, validate_size
+from corpus.bronze.download import DownloadError, validate_gzip, validate_size
 
 
 def write_multi_member_gzip(path: Path, parts: list[bytes]) -> None:

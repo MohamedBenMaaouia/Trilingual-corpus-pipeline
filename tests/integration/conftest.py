@@ -11,7 +11,7 @@ from collections.abc import Iterator
 import pytest
 from psycopg2.extensions import connection as Connection
 
-from corpus.acquisition.control import SegmentControl
+from corpus.bronze.control import SegmentControl
 from corpus.db import connect
 
 pytestmark = pytest.mark.integration

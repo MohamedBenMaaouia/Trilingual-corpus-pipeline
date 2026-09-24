@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from corpus.acquisition.control import SegmentControl
-from corpus.acquisition.manifest import Segment
-from corpus.ingest.download import DownloadError, http_session, run_download
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.download import DownloadError, http_session, run_download
+from corpus.bronze.manifest import Segment
 from corpus.io import bronze_object, bronze_tmp_object
 from corpus.store import delete_object, object_exists
 

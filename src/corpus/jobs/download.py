@@ -9,16 +9,16 @@ never leaves a half-written object in bronze.
 import argparse
 from pathlib import Path
 
-from corpus.acquisition.control import SegmentControl
-from corpus.config import get_settings
-from corpus.config.local import LocalSettings
-from corpus.db import connect
-from corpus.ingest.download import (
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.download import (
     DEFAULT_THREADS,
     STALE_LEASE_SECONDS,
     http_session,
     run_download,
 )
+from corpus.config import get_settings
+from corpus.config.local import LocalSettings
+from corpus.db import connect
 from corpus.metrics.emit import emit, start_run
 from corpus.run_id import default_run_id
 

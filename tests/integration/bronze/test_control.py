@@ -1,9 +1,9 @@
-"""corpus.acquisition.control against real Postgres (task 1.2.3)."""
+"""corpus.bronze.control against real Postgres (task 1.2.3)."""
 
 import pytest
 
-from corpus.acquisition.control import SegmentControl
-from corpus.acquisition.manifest import Segment
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.manifest import Segment
 
 pytestmark = pytest.mark.integration
 

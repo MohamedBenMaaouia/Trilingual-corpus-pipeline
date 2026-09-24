@@ -1,4 +1,4 @@
-"""corpus.ingest.download head/stream_to_file, against a local HTTP server."""
+"""corpus.bronze.download head/stream_to_file, against a local HTTP server."""
 
 import threading
 from collections.abc import Iterator
@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-from corpus.ingest.download import head, http_session, stream_to_file
+from corpus.bronze.download import head, http_session, stream_to_file
 
 BODY = bytes(range(256)) * 40  # 10 240 bytes of recognisable data
 

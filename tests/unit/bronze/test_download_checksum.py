@@ -1,11 +1,11 @@
-"""corpus.ingest.download: ETag verification, when the ETag is usable as a checksum."""
+"""corpus.bronze.download: ETag verification, when the ETag is usable as a checksum."""
 
 import hashlib
 from pathlib import Path
 
 import pytest
 
-from corpus.ingest.download import DownloadError, md5_of_file, verify_etag
+from corpus.bronze.download import DownloadError, md5_of_file, verify_etag
 
 
 @pytest.fixture

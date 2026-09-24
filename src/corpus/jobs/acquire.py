@@ -8,8 +8,8 @@ chosen segment. Running it twice changes nothing (ON CONFLICT DO NOTHING).
 
 import argparse
 
-from corpus.acquisition.control import SegmentControl
-from corpus.acquisition.manifest import fetch_wet_paths, sample_segments
+from corpus.bronze.control import SegmentControl
+from corpus.bronze.manifest import fetch_wet_paths, sample_segments
 from corpus.db import connect
 from corpus.metrics.emit import emit, start_run
 from corpus.run_id import default_run_id

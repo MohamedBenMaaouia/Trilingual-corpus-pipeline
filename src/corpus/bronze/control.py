@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from psycopg2.extensions import connection as Connection
 from psycopg2.extras import execute_values
 
-from corpus.acquisition.manifest import Segment
+from corpus.bronze.manifest import Segment
 
 
 class SegmentControl:

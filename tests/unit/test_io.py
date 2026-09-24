@@ -9,7 +9,6 @@ from corpus.io import (
     bronze_object,
     bronze_path,
     bronze_tmp_object,
-    smoke_output_path,
     spark_events_path,
     split_s3a,
 )
@@ -83,6 +82,5 @@ def test_split_s3a_refuses_anything_else(bad: str) -> None:
         split_s3a(bad)
 
 
-def test_smoke_and_event_log_paths() -> None:
-    assert smoke_output_path() == "s3a://corpus-silver/smoke"
+def test_event_log_path() -> None:
     assert spark_events_path() == "s3a://corpus-meta/spark-events"

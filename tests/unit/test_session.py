@@ -1,5 +1,5 @@
 """corpus.session: local configuration and Databricks reuse. No Spark is started here;
-the real local session is exercised end to end by the smoke job (Story 0.5)."""
+the real local session is exercised on the cluster by every Spark job (DECISIONS S0-08, S2-02)."""
 
 from collections.abc import Iterator
 

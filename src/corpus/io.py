@@ -57,11 +57,6 @@ def split_s3a(uri: str) -> tuple[str, str]:
     return bucket, key
 
 
-def smoke_output_path() -> str:
-    """Sprint 0 smoke job output (task 0.5.2)."""
-    return f"{get_settings().silver_root}/smoke"
-
-
 def spark_events_path() -> str:
     """Spark event logs, read by the history server (placeholder .keep made by minio-init)."""
     return f"{get_settings().meta_root}/spark-events"

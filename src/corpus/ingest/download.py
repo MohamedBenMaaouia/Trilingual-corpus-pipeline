@@ -204,7 +204,8 @@ def download_segment(
 class RunSummary(NamedTuple):
     """What one download run achieved. Story 1.6 turns this into run_metrics rows."""
 
-    complete: int
+    intended: int  # segments registered for this crawl, whatever their status
+    complete: int  # completed by THIS run (already-complete ones are not re-counted)
     failed: int
     bytes_downloaded: int
     duration_seconds: float
@@ -219,6 +220,10 @@ def run_download(
     threads: int = DEFAULT_THREADS,
     max_decompressed_bytes: int = MAX_DECOMPRESSED_BYTES,
     base_url: str | None = None,  # tests point this at a local server
+    # How old a claim must be before this run takes it back. The default assumes a
+    # dead process; the kill-and-restart proof (1.7) restarts within seconds, so it
+    # passes a short lease instead of waiting a quarter of an hour.
+    stale_lease_seconds: int = STALE_LEASE_SECONDS,
 ) -> RunSummary:
     """Download every pending segment of a crawl. Safe to kill and restart at any point.
 
@@ -228,7 +233,7 @@ def run_download(
     started = time.monotonic()
     # First, before anything else: rows a dead process left in 'downloading' would
     # otherwise never be picked up again, and a restart would find nothing to do.
-    control.reclaim_stale(crawl_id, STALE_LEASE_SECONDS)
+    control.reclaim_stale(crawl_id, stale_lease_seconds)
     control.retry_failed(crawl_id, MAX_ATTEMPTS)
 
     intended = sum(control.status_counts(crawl_id).values())
@@ -270,6 +275,7 @@ def run_download(
                         size_bytes=result.size_bytes,
                         etag=result.etag,
                         final_key=result.final_uri,
+                        checksum_verified=result.checksum_verified,
                     )
                     complete += 1
                     bytes_downloaded += result.size_bytes
@@ -289,6 +295,7 @@ def run_download(
                 )
 
     return RunSummary(
+        intended=intended,
         complete=complete,
         failed=failed,
         bytes_downloaded=bytes_downloaded,

@@ -41,6 +41,15 @@ COPY src ./src
 RUN --mount=type=cache,target=/uv-cache \
     UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark
 
+# Soda Core in a third virtualenv: it pins its own versions of shared libraries,
+# so it must not share an environment with Airflow or with corpus (plan, S1).
+# 3.5.6 is the last SodaCL (3.x) release; Soda 4.x is a different, contract-based
+# product and the plan's gate definitions are written in SodaCL (DECISIONS S1-06).
+RUN --mount=type=cache,target=/uv-cache \
+    UV_CACHE_DIR=/uv-cache uv venv /opt/soda-venv --python /usr/python/bin/python3.11 \
+ && UV_CACHE_DIR=/uv-cache VIRTUAL_ENV=/opt/soda-venv \
+    uv pip install --python /opt/soda-venv/bin/python soda-core-postgres==3.5.6
+
 # Staging area for in-progress downloads (S1). Created here and owned by the
 # airflow user: a fresh named volume mounted over it inherits this ownership,
 # and Docker would otherwise create the volume as root, which airflow cannot write.

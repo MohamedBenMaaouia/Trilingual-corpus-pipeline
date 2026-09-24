@@ -74,17 +74,29 @@ class SegmentControl:
             return [Segment.from_source_url(segment_id, url) for segment_id, url in cur.fetchall()]
 
     def mark_complete(
-        self, crawl_id: str, segment_id: str, *, size_bytes: int, etag: str | None, final_key: str
+        self,
+        crawl_id: str,
+        segment_id: str,
+        *,
+        size_bytes: int,
+        etag: str | None,
+        final_key: str,
+        checksum_verified: bool | None = None,
     ) -> None:
-        """The file is validated and stored: record what landed and where."""
+        """The file is validated and stored: record what landed and where.
+
+        checksum_verified: True if the ETag was a plain MD5 and matched, False if it
+        could not be compared, NULL if unknown (S1-04). The data card quotes it.
+        """
         with self._conn, self._conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE segments SET status = 'complete', bytes = %s, etag = %s, final_key = %s,
+                                    checksum_verified = %s,
                                     completed_at = now(), claimed_at = NULL, error = NULL
                 WHERE crawl_id = %s AND segment_id = %s
                 """,
-                (size_bytes, etag, final_key, crawl_id, segment_id),
+                (size_bytes, etag, final_key, checksum_verified, crawl_id, segment_id),
             )
 
     def mark_failed(self, crawl_id: str, segment_id: str, error: str) -> None:

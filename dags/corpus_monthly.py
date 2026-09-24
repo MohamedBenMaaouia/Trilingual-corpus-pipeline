@@ -35,7 +35,8 @@ with DAG(
         task_id="acquire",
         bash_command=(
             f"{CORPUS_PYTHON} -m corpus.jobs.acquire "
-            f"--crawl-id {CRAWL_ID} --segments {SEGMENT_COUNT} --seed {SAMPLE_SEED}"
+            f"--crawl-id {CRAWL_ID} --segments {SEGMENT_COUNT} --seed {SAMPLE_SEED} "
+            '--run-id "{{ run_id }}"'
         ),
     )
 
@@ -43,7 +44,23 @@ with DAG(
     # task log shows progress. Retryable and restartable by design (Story 1.3).
     download = BashOperator(
         task_id="download",
-        bash_command=f"{CORPUS_PYTHON} -m corpus.jobs.download --crawl-id {CRAWL_ID}",
+        bash_command=(
+            f"{CORPUS_PYTHON} -m corpus.jobs.download --crawl-id {CRAWL_ID} "
+            '--run-id "{{ run_id }}"'
+        ),
     )
 
-    acquire >> download  # download runs only if acquire succeeded
+    # Gate A: is bronze complete and trustworthy? A failure stops the DAG here, so
+    # nothing downstream ever reads a half-downloaded crawl (invariant 8).
+    # {{ run_id }} is Airflow's own run identifier, so the verdict in gate_results
+    # can be traced back to this exact run (T8).
+    gate_a = BashOperator(
+        task_id="gate_a",
+        bash_command=(
+            f"{CORPUS_PYTHON} -m corpus.jobs.gate --gate gate_a "
+            f"--crawl-id {CRAWL_ID} --expected-segments {SEGMENT_COUNT} "
+            '--run-id "{{ run_id }}"'
+        ),
+    )
+
+    acquire >> download >> gate_a  # each task runs only if the previous succeeded

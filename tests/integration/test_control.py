@@ -97,6 +97,27 @@ def test_mark_complete_records_what_landed(control: SegmentControl, crawl_id: st
         assert cur.fetchone() == (66_761_801, '"abc123"', "bronze/.../x.wet.gz", None, True)
 
 
+def test_mark_complete_records_whether_the_checksum_was_verified(
+    control: SegmentControl, crawl_id: str
+) -> None:
+    """True = ETag was an MD5 and matched; False = not comparable; never a false claim."""
+    control.register_intent(crawl_id, SAMPLE[:2])
+    control.claim_pending(crawl_id, limit=2)
+    control.mark_complete(
+        crawl_id, "00007", size_bytes=1, etag='"x"', final_key="k", checksum_verified=True
+    )
+    control.mark_complete(
+        crawl_id, "00042", size_bytes=1, etag='"y-3"', final_key="k", checksum_verified=False
+    )
+    with control._conn.cursor() as cur:  # noqa: SLF001
+        cur.execute(
+            "SELECT segment_id, checksum_verified FROM segments"
+            " WHERE crawl_id = %s ORDER BY segment_id",
+            (crawl_id,),
+        )
+        assert cur.fetchall() == [("00007", True), ("00042", False)]
+
+
 def test_complete_segments_are_never_handed_out_again(
     control: SegmentControl, crawl_id: str
 ) -> None:

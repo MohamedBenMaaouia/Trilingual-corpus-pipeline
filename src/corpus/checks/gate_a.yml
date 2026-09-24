@@ -1,0 +1,35 @@
+# Gate A (Story 1.5): is bronze complete and trustworthy for this crawl?
+# Run by corpus.jobs.gate, which passes ${crawl_id} and ${expected_segments}.
+# A failure here stops the DAG: bad data never reaches silver (invariant 8).
+
+checks for segments:
+  # The acquire step must have registered exactly the intended number of segments.
+  # Without this, a gate on an empty table would pass and prove nothing.
+  - registered_segments = ${expected_segments}:
+      name: All intended segments are registered
+      registered_segments query: |
+        SELECT count(*) FROM segments WHERE crawl_id = '${crawl_id}'
+
+  # Every registered segment reached 'complete'. This is also the plan's
+  # "count of complete == intended count", from the other direction.
+  - unfinished_segments = 0:
+      name: No segment is still pending, downloading or failed
+      unfinished_segments query: |
+        SELECT count(*) FROM segments
+        WHERE crawl_id = '${crawl_id}' AND status <> 'complete'
+
+  # A failed segment must be dealt with by a human; the retry path runs first.
+  - failed_segments = 0:
+      name: No segment failed
+      failed_segments query: |
+        SELECT count(*) FROM segments
+        WHERE crawl_id = '${crawl_id}' AND status = 'failed'
+
+  # A complete row must record a real size: null or zero means the bookkeeping
+  # and the object store disagree.
+  - segments_without_bytes = 0:
+      name: Every complete segment records its size
+      segments_without_bytes query: |
+        SELECT count(*) FROM segments
+        WHERE crawl_id = '${crawl_id}' AND status = 'complete'
+          AND (bytes IS NULL OR bytes = 0)

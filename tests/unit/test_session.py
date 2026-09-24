@@ -24,6 +24,8 @@ def local_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORPUS_ENV", "local")
     monkeypatch.setenv("CORPUS_S3_ACCESS_KEY", "test-user")
     monkeypatch.setenv("CORPUS_S3_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("CORPUS_INGEST_S3_ACCESS_KEY", "test-ingest-user")
+    monkeypatch.setenv("CORPUS_INGEST_S3_SECRET_KEY", "test-ingest-secret")
     monkeypatch.setenv("CORPUS_METRICS_DSN", "postgresql://u:p@postgres:5432/corpus")
 
 
@@ -40,12 +42,14 @@ def test_local_conf_targets_the_docker_cluster(local_env: None) -> None:
     assert conf["spark.sql.extensions"] == "io.delta.sql.DeltaSparkSessionExtension"
 
 
-def test_local_conf_uses_the_service_user_keys(local_env: None) -> None:
+def test_spark_gets_the_processing_user_never_the_ingest_user(local_env: None) -> None:
+    """Spark must not hold credentials that can write bronze (DECISIONS S2-02)."""
     settings = get_settings()
     assert isinstance(settings, LocalSettings)
     conf = local_conf(settings)
     assert conf["spark.hadoop.fs.s3a.access.key"] == "test-user"
     assert conf["spark.hadoop.fs.s3a.secret.key"] == "test-secret"
+    assert not {"test-ingest-user", "test-ingest-secret"} & set(conf.values())
 
 
 def test_azure_reuses_the_active_session(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,0 +1,54 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListEveryLayer",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": [
+        "arn:aws:s3:::corpus-bronze",
+        "arn:aws:s3:::corpus-silver",
+        "arn:aws:s3:::corpus-gold",
+        "arn:aws:s3:::corpus-meta"
+      ]
+    },
+    {
+      "Sid": "ReadBronze",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::corpus-bronze/*"]
+    },
+    {
+      "Sid": "NeverWriteBronze",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": ["arn:aws:s3:::corpus-bronze/*"]
+    },
+    {
+      "Sid": "ReadWriteDownstreamLayers",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::corpus-silver/*",
+        "arn:aws:s3:::corpus-gold/*",
+        "arn:aws:s3:::corpus-meta/*"
+      ]
+    },
+    {
+      "Sid": "MultipartUploadsDownstreamLayers",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucketMultipartUploads"],
+      "Resource": [
+        "arn:aws:s3:::corpus-silver",
+        "arn:aws:s3:::corpus-gold",
+        "arn:aws:s3:::corpus-meta"
+      ]
+    }
+  ]
+}

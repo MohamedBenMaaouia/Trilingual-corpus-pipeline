@@ -29,5 +29,10 @@ class LocalSettings(Settings):
     staging_dir: str = "/opt/corpus/staging"
 
     s3_endpoint: str = "http://minio:9000"
+    # Processing user: Spark (S3A). Reads bronze, can never write it (DECISIONS S2-02).
     s3_access_key: str
     s3_secret_key: SecretStr
+    # Ingest user: corpus.store, i.e. the downloader. The only identity that can write
+    # bronze, and it can touch nothing else. Spark never receives these keys.
+    ingest_s3_access_key: str
+    ingest_s3_secret_key: SecretStr

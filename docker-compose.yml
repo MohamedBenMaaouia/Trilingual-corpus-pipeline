@@ -35,8 +35,12 @@ x-airflow: &airflow
     # Control plane + telemetry (S1). Assembled here, so .env holds no second copy
     # of the password. Database "corpus", created by docker/postgres-init.sql.
     CORPUS_METRICS_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/corpus
+    # Two MinIO users (DECISIONS S2-02): Spark reads bronze and writes the other layers;
+    # only the downloader (corpus.store) can write bronze.
     CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
     CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+    CORPUS_INGEST_S3_ACCESS_KEY: ${CORPUS_INGEST_S3_ACCESS_KEY:?set CORPUS_INGEST_S3_ACCESS_KEY in .env}
+    CORPUS_INGEST_S3_SECRET_KEY: ${CORPUS_INGEST_S3_SECRET_KEY:?set CORPUS_INGEST_S3_SECRET_KEY in .env}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/corpus/src:ro          # live code for the driver (editable install)
@@ -68,7 +72,8 @@ services:
       timeout: 5s
       retries: 12
 
-  # Runs once after MinIO is healthy: buckets, event-log placeholder, service user.
+  # Runs once after MinIO is healthy: buckets, event-log placeholder, the two
+  # service users and their policies (DECISIONS S2-02).
   minio-init:
     image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
@@ -79,8 +84,11 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
       CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
       CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+      CORPUS_INGEST_S3_ACCESS_KEY: ${CORPUS_INGEST_S3_ACCESS_KEY:?set CORPUS_INGEST_S3_ACCESS_KEY in .env}
+      CORPUS_INGEST_S3_SECRET_KEY: ${CORPUS_INGEST_S3_SECRET_KEY:?set CORPUS_INGEST_S3_SECRET_KEY in .env}
     volumes:
       - ./docker/minio-init.sh:/minio-init.sh:ro
+      - ./docker/minio-policies:/policies:ro
       - ./docker/minio-clean.sh:/minio-clean.sh:ro   # used by make clean-silver / clean-gold
     entrypoint: ["/bin/sh", "/minio-init.sh"]
 
@@ -244,6 +252,8 @@ services:
       CORPUS_METRICS_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/corpus
       CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
       CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
+      CORPUS_INGEST_S3_ACCESS_KEY: ${CORPUS_INGEST_S3_ACCESS_KEY:?set CORPUS_INGEST_S3_ACCESS_KEY in .env}
+      CORPUS_INGEST_S3_SECRET_KEY: ${CORPUS_INGEST_S3_SECRET_KEY:?set CORPUS_INGEST_S3_SECRET_KEY in .env}
     volumes:
       - .:/opt/corpus:ro
     entrypoint: ["python", "-m"]

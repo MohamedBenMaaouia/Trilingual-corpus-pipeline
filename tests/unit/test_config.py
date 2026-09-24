@@ -24,9 +24,11 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 @pytest.fixture
 def s3_keys(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Everything the local profile requires: the S3 keys and the database."""
+    """Everything the local profile requires: both users' S3 keys and the database."""
     monkeypatch.setenv("CORPUS_S3_ACCESS_KEY", "test-user")
     monkeypatch.setenv("CORPUS_S3_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("CORPUS_INGEST_S3_ACCESS_KEY", "test-ingest-user")
+    monkeypatch.setenv("CORPUS_INGEST_S3_SECRET_KEY", "test-ingest-secret")
     monkeypatch.setenv("CORPUS_METRICS_DSN", "postgresql://u:p@postgres:5432/corpus")
 
 
@@ -53,7 +55,13 @@ def test_missing_required_settings_fail_at_startup() -> None:
     with pytest.raises(ValueError, match="bad configuration") as err:
         get_settings()
     message = str(err.value)
-    for name in ("CORPUS_S3_ACCESS_KEY", "CORPUS_S3_SECRET_KEY", "CORPUS_METRICS_DSN"):
+    for name in (
+        "CORPUS_S3_ACCESS_KEY",
+        "CORPUS_S3_SECRET_KEY",
+        "CORPUS_INGEST_S3_ACCESS_KEY",
+        "CORPUS_INGEST_S3_SECRET_KEY",
+        "CORPUS_METRICS_DSN",
+    ):
         assert name in message
 
 
@@ -61,6 +69,8 @@ def test_a_configuration_error_never_prints_the_values(monkeypatch: pytest.Monke
     """Pydantic quotes the input it received; that would leak secrets into task logs."""
     monkeypatch.setenv("CORPUS_S3_ACCESS_KEY", "test-user")
     monkeypatch.setenv("CORPUS_S3_SECRET_KEY", "super-secret-value")
+    monkeypatch.setenv("CORPUS_INGEST_S3_ACCESS_KEY", "test-ingest-user")
+    monkeypatch.setenv("CORPUS_INGEST_S3_SECRET_KEY", "super-secret-ingest")
     monkeypatch.setenv("CORPUS_METRICS_DSN", "postgresql://u:p@postgres:5432/corpus")
     monkeypatch.setenv("CORPUS_BRONZE_ROOT", "")  # empty: fine for a str field
     monkeypatch.setenv("CORPUS_SEGMENT_COUNT", "not-a-number")  # unknown field, ignored
@@ -68,14 +78,17 @@ def test_a_configuration_error_never_prints_the_values(monkeypatch: pytest.Monke
     with pytest.raises(ValueError) as err:
         get_settings()
     assert "super-secret-value" not in str(err.value)
+    assert "super-secret-ingest" not in str(err.value)
     assert "CORPUS_S3_ACCESS_KEY" in str(err.value)
 
 
 def test_secret_is_masked_when_printed(s3_keys: None) -> None:
     s = get_settings()
     assert "test-secret" not in repr(s)
+    assert "test-ingest-secret" not in repr(s)
     assert isinstance(s, LocalSettings)
     assert s.s3_secret_key.get_secret_value() == "test-secret"
+    assert s.ingest_s3_secret_key.get_secret_value() == "test-ingest-secret"
 
 
 def test_settings_are_frozen(s3_keys: None) -> None:

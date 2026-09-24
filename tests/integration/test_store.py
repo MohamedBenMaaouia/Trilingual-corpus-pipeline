@@ -15,10 +15,13 @@ CONTENT = b"pretend this is a validated WET file" * 100
 
 @pytest.fixture
 def uris() -> Iterator[tuple[str, str]]:
-    """A throwaway temp/final pair in corpus-meta, removed afterwards."""
+    """A throwaway temp/final pair under corpus-bronze/_test/, removed afterwards.
+
+    Bronze, because corpus.store runs as the ingest user, which can reach nothing else.
+    """
     name = f"_test/{uuid.uuid4().hex}.wet.gz"
-    temp = f"s3a://corpus-meta/{name}.tmp"
-    final = f"s3a://corpus-meta/{name}"
+    temp = f"s3a://corpus-bronze/{name}.tmp"
+    final = f"s3a://corpus-bronze/{name}"
     yield temp, final
     for uri in (temp, final):
         if object_exists(uri):
@@ -41,4 +44,4 @@ def test_upload_then_promote_publishes_exactly_once(uris: tuple[str, str], tmp_p
 
 
 def test_object_exists_is_false_for_something_never_written() -> None:
-    assert object_exists(f"s3a://corpus-meta/_test/{uuid.uuid4().hex}") is False
+    assert object_exists(f"s3a://corpus-bronze/_test/{uuid.uuid4().hex}") is False

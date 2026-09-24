@@ -2,6 +2,9 @@
 
 Mirrors corpus.db for Postgres. Keeping boto3 in one file is what makes Sprint 10
 cheap: on Azure the storage protocol changes here and nowhere else.
+
+The client authenticates as the ingest user, which can read and write bronze and
+nothing else (DECISIONS S2-02). A call on any other bucket fails with AccessDenied.
 """
 
 from functools import lru_cache
@@ -25,8 +28,8 @@ def s3_client() -> Any:
     return boto3.client(
         "s3",
         endpoint_url=settings.s3_endpoint,  # MinIO instead of AWS
-        aws_access_key_id=settings.s3_access_key,
-        aws_secret_access_key=settings.s3_secret_key.get_secret_value(),
+        aws_access_key_id=settings.ingest_s3_access_key,
+        aws_secret_access_key=settings.ingest_s3_secret_key.get_secret_value(),
     )
 
 

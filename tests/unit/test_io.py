@@ -20,6 +20,8 @@ def local_settings(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("CORPUS_ENV", "local")
     monkeypatch.setenv("CORPUS_S3_ACCESS_KEY", "test-user")
     monkeypatch.setenv("CORPUS_S3_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("CORPUS_INGEST_S3_ACCESS_KEY", "test-ingest-user")
+    monkeypatch.setenv("CORPUS_INGEST_S3_SECRET_KEY", "test-ingest-secret")
     monkeypatch.setenv("CORPUS_METRICS_DSN", "postgresql://u:p@postgres:5432/corpus")
     get_settings.cache_clear()
     yield

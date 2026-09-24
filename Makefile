@@ -1,7 +1,7 @@
 # Thin wrappers around docker compose and uv: no shell-specific syntax,
 # so the same targets work from PowerShell, cmd or Git Bash.
 
-.PHONY: up down logs build test lint clean-silver clean-gold
+.PHONY: up down logs build migrate test lint clean-silver clean-gold
 
 # Start every service in the background; --wait blocks until healthchecks pass.
 up:
@@ -18,6 +18,10 @@ logs:
 # Build the corpus wheel into dist/.
 build:
 	uv build --wheel
+
+# Apply pending schema migrations to the corpus database (needs the stack up).
+migrate:
+	docker compose exec airflow-scheduler /opt/corpus-venv/bin/python -m corpus.db
 
 # pytest in a Linux container with the cluster's Java/Spark/jars (T16), never on
 # native Windows. --build: the image is rebuilt from cache when a Dockerfile changes.

@@ -13,6 +13,7 @@ dependencies = [
     "numpy<2",                  # fastText's predict() breaks on NumPy 2
     "xxhash>=3",                # stable hashes: doc_id, salts, dedup (never Python's hash())
     "boto3>=1.34",              # S3/MinIO client for downloads and object listing (S1)
+    "requests>=2.32",           # HTTPS downloads from data.commoncrawl.org (S1)
     "psycopg2-binary>=2.9",     # Postgres driver: control plane, metrics (S1)
     "pydantic>=2",              # typed config and records
     "pydantic-settings>=2",     # reads env vars into the config model (S0)
@@ -34,6 +35,8 @@ dev = [
     "chispa>=0.10",    # DataFrame equality assertions for Spark tests
     "ruff>=0.6",       # linter + formatter
     "mypy>=1.10",      # static type checker
+    "types-requests>=2.32",   # requests ships no type hints; mypy needs these
+    "types-psycopg2>=2.9",    # same for psycopg2 (also types cursor.rowcount as int)
     "duckdb>=1",       # quick SQL over Parquet outputs when inspecting runs
     "matplotlib>=3.8", # plots: LSH curve (S4), before/after charts
 ]
@@ -53,14 +56,26 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM"]
 python_version = "3.11"
 strict = true
 files = ["src", "tests"]
+# Two conftest.py files (tests/ and tests/integration/) are distinct modules:
+# derive their names from these roots instead of treating both as "conftest".
+explicit_package_bases = true
+mypy_path = "src:."
 # Teaches mypy that settings fields may come from the environment, not only __init__ args.
 plugins = ["pydantic.mypy"]
+
+# boto3/botocore ship no type hints (the stubs are a separate, huge package).
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # importlib: test files don't need __init__.py, and same-named files in unit/ and
 # integration/ don't collide. No cache: the repo is mounted read-only in the container.
 addopts = ["--import-mode=importlib", "-p", "no:cacheprovider"]
+markers = [
+    "integration: needs the running stack (Postgres, MinIO); not a pure unit test",
+]
 filterwarnings = [
     # fastwarc 1.0.9 imports its own legacy module on `import fastwarc`; not our code.
     "ignore:Use the new Reader and Writer classes from stream_io instead:DeprecationWarning",

@@ -32,12 +32,16 @@ x-airflow: &airflow
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     # Read by corpus.config inside Spark jobs (Story 0.3).
     CORPUS_ENV: ${CORPUS_ENV:-local}
+    # Control plane + telemetry (S1). Assembled here, so .env holds no second copy
+    # of the password. Database "corpus", created by docker/postgres-init.sql.
+    CORPUS_METRICS_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/corpus
     CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
     CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/corpus/src:ro          # live code for the driver (editable install)
     - airflow-logs:/opt/airflow/logs    # shared: the scheduler writes task logs, the UI reads them
+    - download-staging:/opt/corpus/staging  # in-progress downloads (S1); survives restarts
   depends_on:
     postgres:
       condition: service_healthy
@@ -234,6 +238,12 @@ services:
     image: corpus-spark-test:dev
     profiles: ["tools"]
     working_dir: /opt/corpus
+    environment:
+      # A complete local environment: integration tests talk to the real Postgres
+      # and MinIO on the compose network. Unit tests set their own values instead.
+      CORPUS_METRICS_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/corpus
+      CORPUS_S3_ACCESS_KEY: ${CORPUS_S3_ACCESS_KEY:?set CORPUS_S3_ACCESS_KEY in .env}
+      CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
     volumes:
       - .:/opt/corpus:ro
     entrypoint: ["python", "-m"]
@@ -243,3 +253,4 @@ volumes:
   minio-data:
   postgres-data:
   airflow-logs:
+  download-staging:

@@ -23,6 +23,11 @@ class LocalSettings(Settings):
 
     # MinIO as the pipeline's own "corpus" user, never root (DECISIONS S0-05).
     # No defaults for the keys: a missing key must fail at startup, not mid-job.
+    # Local disk for in-progress downloads (T7): object storage cannot be appended
+    # to, so a resumable download needs a real file. A Docker named volume, so a
+    # restarted container still finds its partial files.
+    staging_dir: str = "/opt/corpus/staging"
+
     s3_endpoint: str = "http://minio:9000"
     s3_access_key: str
     s3_secret_key: SecretStr

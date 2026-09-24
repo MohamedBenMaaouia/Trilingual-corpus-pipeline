@@ -13,7 +13,7 @@ from corpus.config import get_settings
 _CRAWL_ID = re.compile(r"CC-MAIN-\d{4}-\d{2}")
 
 
-def _check_crawl_id(crawl_id: str) -> None:
+def check_crawl_id(crawl_id: str) -> None:
     # A bad id would silently create a new, wrong folder instead of failing.
     if not _CRAWL_ID.fullmatch(crawl_id):
         raise ValueError(f"not a Common Crawl id: {crawl_id!r} (expected CC-MAIN-YYYY-WW)")
@@ -25,11 +25,36 @@ def bronze_path(crawl_id: str, segment: int) -> str:
 
     segment = index of the file in the crawl's wet.paths list, 5 digits (T6).
     """
-    _check_crawl_id(crawl_id)
+    check_crawl_id(crawl_id)
     if not 0 <= segment <= 99_999:
         raise ValueError(f"segment must be 0..99999, got {segment}")
     root = get_settings().bronze_root
     return f"{root}/common_crawl/crawl_id={crawl_id}/segment={segment:05d}"
+
+
+def bronze_object(crawl_id: str, segment: int, filename: str) -> str:
+    """The final object for one downloaded WET file, name kept as published."""
+    if "/" in filename or filename in ("", ".", ".."):
+        # The filename comes from the crawl manifest: never let it climb out of its folder.
+        raise ValueError(f"not a plain file name: {filename!r}")
+    return f"{bronze_path(crawl_id, segment)}/{filename}"
+
+
+def bronze_tmp_object(crawl_id: str, segment: int, filename: str) -> str:
+    """Where an upload lands before it is promoted (T7). Nothing reads under _tmp."""
+    if "/" in filename or filename in ("", ".", ".."):
+        raise ValueError(f"not a plain file name: {filename!r}")
+    return f"{bronze_path(crawl_id, segment)}/_tmp/{filename}"
+
+
+def split_s3a(uri: str) -> tuple[str, str]:
+    """s3a://bucket/some/key -> ("bucket", "some/key"), which is what boto3 wants."""
+    if not uri.startswith("s3a://"):
+        raise ValueError(f"not an s3a uri: {uri!r}")
+    bucket, _, key = uri.removeprefix("s3a://").partition("/")
+    if not bucket or not key:
+        raise ValueError(f"uri has no bucket or no key: {uri!r}")
+    return bucket, key
 
 
 def smoke_output_path() -> str:

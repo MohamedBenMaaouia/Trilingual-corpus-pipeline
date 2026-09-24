@@ -41,6 +41,11 @@ COPY src ./src
 RUN --mount=type=cache,target=/uv-cache \
     UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark
 
+# Staging area for in-progress downloads (S1). Created here and owned by the
+# airflow user: a fresh named volume mounted over it inherits this ownership,
+# and Docker would otherwise create the volume as root, which airflow cannot write.
+RUN mkdir -p /opt/corpus/staging && chown airflow:root /opt/corpus/staging
+
 # Back to Airflow's user and home. /opt/corpus-venv is deliberately NOT on PATH:
 # `airflow` and `python` stay Airflow's; jobs call /opt/corpus-venv/bin/python.
 USER airflow

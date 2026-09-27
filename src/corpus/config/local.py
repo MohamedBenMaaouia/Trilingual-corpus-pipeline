@@ -20,6 +20,10 @@ class LocalSettings(Settings):
     # (client mode, DECISIONS S0-01), and executors connect back to it by this name.
     spark_master: str = "spark://spark-master:7077"
     driver_host: str = "airflow-scheduler"
+    # Executor JVM heap. Must match what each worker offers (--memory 3g in
+    # docker-compose.yml, DECISIONS S0-05); Spark's default is 1g, which left two thirds
+    # of the workers unused and ran out of heap on the first real parse (S2-05).
+    executor_memory: str = "3g"
 
     # MinIO as the pipeline's own "corpus" user, never root (DECISIONS S0-05).
     # No defaults for the keys: a missing key must fail at startup, not mid-job.

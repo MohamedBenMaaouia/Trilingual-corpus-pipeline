@@ -35,6 +35,7 @@ def test_local_conf_targets_the_docker_cluster(local_env: None) -> None:
     conf = local_conf(settings)
     assert conf["spark.master"] == "spark://spark-master:7077"
     assert conf["spark.driver.host"] == "airflow-scheduler"
+    assert conf["spark.executor.memory"] == "3g"  # the workers' --memory, not Spark's 1g
     assert conf["spark.eventLog.enabled"] == "true"
     assert conf["spark.eventLog.dir"] == "s3a://corpus-meta/spark-events"
     assert conf["spark.hadoop.fs.s3a.endpoint"] == "http://minio:9000"

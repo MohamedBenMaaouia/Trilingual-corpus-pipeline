@@ -34,6 +34,8 @@ def local_conf(settings: LocalSettings) -> dict[str, str]:
         # and executors on the workers connect back to it by this hostname.
         "spark.master": settings.spark_master,
         "spark.driver.host": settings.driver_host,
+        # One executor per worker, holding all of the worker's memory (S2-05).
+        "spark.executor.memory": settings.executor_memory,
         # Event logs are a driver setting; the history server reads the same folder.
         "spark.eventLog.enabled": "true",
         "spark.eventLog.dir": spark_events_path(),

@@ -130,6 +130,18 @@ def test_complete_segments_are_never_handed_out_again(
     assert control.status_counts(crawl_id) == {"complete": 1}
 
 
+def test_complete_files_lists_only_complete_segments_in_order(
+    control: SegmentControl, crawl_id: str
+) -> None:
+    """What silver reads: complete rows only, by segment_id, with their stored location."""
+    control.register_intent(crawl_id, SAMPLE)
+    control.claim_pending(crawl_id, limit=3)
+    control.mark_complete(crawl_id, "01337", size_bytes=1, etag=None, final_key="s3a://b/c")
+    control.mark_complete(crawl_id, "00007", size_bytes=1, etag=None, final_key="s3a://b/a")
+    control.mark_failed(crawl_id, "00042", "boom")  # failed: never handed to silver
+    assert control.complete_files(crawl_id) == [("00007", "s3a://b/a"), ("01337", "s3a://b/c")]
+
+
 def test_mark_failed_stores_the_error(control: SegmentControl, crawl_id: str) -> None:
     control.register_intent(crawl_id, SAMPLE[:1])
     control.claim_pending(crawl_id, limit=1)

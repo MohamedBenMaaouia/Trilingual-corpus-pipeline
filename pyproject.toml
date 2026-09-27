@@ -63,9 +63,10 @@ mypy_path = "src:."
 # Teaches mypy that settings fields may come from the environment, not only __init__ args.
 plugins = ["pydantic.mypy"]
 
-# boto3/botocore ship no type hints (the stubs are a separate, huge package).
+# boto3/botocore ship no type hints (the stubs are a separate, huge package). Same for
+# pandas (pandas-stubs is a separate package; add it with the next dependency batch).
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*"]
+module = ["boto3.*", "botocore.*", "pandas.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

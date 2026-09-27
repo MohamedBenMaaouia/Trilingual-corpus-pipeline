@@ -155,3 +155,20 @@ class SegmentControl:
     def pending_count(self, crawl_id: str) -> int:
         """Segments still waiting to be downloaded."""
         return self.status_counts(crawl_id).get("pending", 0)
+
+    def complete_files(self, crawl_id: str) -> list[tuple[str, str]]:
+        """(segment_id, final_key) of every complete segment, ordered by segment_id.
+
+        This is what silver reads (S2-04): exactly the files Gate A validated, never a
+        bucket listing, which would also pick up files nobody registered.
+        """
+        with self._conn, self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT segment_id, final_key FROM segments
+                WHERE crawl_id = %s AND status = 'complete'
+                ORDER BY segment_id
+                """,
+                (crawl_id,),
+            )
+            return [(segment_id, final_key) for segment_id, final_key in cur.fetchall()]

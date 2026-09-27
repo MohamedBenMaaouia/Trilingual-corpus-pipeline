@@ -26,6 +26,8 @@ from pyspark.sql.types import (
 )
 from tldextract import TLDExtract
 
+from corpus.silver.normalize import normalize_common
+
 # The Public Suffix List snapshot bundled with tldextract: no download (the default
 # fetches publicsuffix.org once per process, i.e. per executor) and no cache written
 # to a home folder. Built at import, so once per Python worker process.
@@ -108,9 +110,9 @@ PARSED_SCHEMA = StructType(
         StructField("url", StringType(), True),
         StructField("domain", StringType(), True),
         StructField("fetch_date", TimestampType(), True),
-        StructField("content_length", LongType(), True),
+        StructField("content_length", LongType(), True),  # the raw record, as in bronze
         StructField("cc_language", StringType(), True),
-        StructField("text", StringType(), True),
+        StructField("text", StringType(), True),  # after normalize_common (S2-06)
         StructField("record_offset", LongType(), True),
         StructField("exception", StringType(), True),  # null <=> this row is a document
         StructField("raw", BinaryType(), True),
@@ -129,7 +131,8 @@ _ROWS_PER_CHUNK = 1_000
 def parse_files(files: DataFrame) -> DataFrame:
     """Rows of Spark's binaryFile source (path, content) -> PARSED_SCHEMA rows.
 
-    Runs in the executors through mapInPandas. The caller persists the result once and
+    Document text comes out already through normalize_common. Runs in the executors
+    through mapInPandas. The caller persists the result once and
     splits it on `exception`, so bronze is read and parsed a single time (S2-04).
     """
     return files.select("path", "content").mapInPandas(_parse_batches, schema=PARSED_SCHEMA)
@@ -141,6 +144,11 @@ def _parse_batches(batches: Iterable[pd.DataFrame]) -> Iterator[pd.DataFrame]:
         for path, content in zip(batch["path"], batch["content"], strict=True):
             chunk: list[dict[str, object]] = []
             for item in parse_wet(io.BytesIO(content)):
+                if isinstance(item, Document):
+                    # normalize_common here, not as a separate Spark step: the text is
+                    # already in Python, so it costs no second JVM <-> Python transfer
+                    # (S2-06). It must precede boilerplate line hashing (T10).
+                    item = item._replace(text=normalize_common(item.text))
                 chunk.append({"path": path, **item._asdict()})
                 if len(chunk) == _ROWS_PER_CHUNK:
                     yield _to_frame(chunk)

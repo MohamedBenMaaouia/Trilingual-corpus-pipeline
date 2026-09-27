@@ -46,6 +46,19 @@ def test_timestamps_and_lengths_survive_the_trip_through_arrow(spark: SparkSessi
     assert row.content_length == 3496
 
 
+def test_document_text_comes_out_normalized(
+    spark: SparkSession, wet_record: WetRecord, tmp_path: Path
+) -> None:
+    """normalize_common runs inside the parse step (S2-06); content_length stays raw."""
+    body = "Home\N{NO-BREAK SPACE}|\N{NO-BREAK SPACE}Contact  \r\n\tNews".encode()
+    menu = tmp_path / "menu.wet.gz"
+    menu.write_bytes(wet_record(body))
+    row = parse_files(read_files(spark, menu)).select("text", "content_length").first()
+    assert row is not None
+    assert row.text == "Home | Contact\nNews"
+    assert row.content_length == len(body)  # the record as stored in bronze
+
+
 def test_a_bad_record_becomes_a_dead_letter_row(
     spark: SparkSession, wet_record: WetRecord, tmp_path: Path
 ) -> None:

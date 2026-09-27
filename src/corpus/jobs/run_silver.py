@@ -15,6 +15,7 @@ from corpus.bronze.control import SegmentControl
 from corpus.db import connect
 from corpus.io import check_crawl_id
 from corpus.session import get_session
+from corpus.silver.boilerplate import DomainRules, domain_boilerplate, remove_domain_boilerplate
 from corpus.silver.parse import parse_files
 
 # --dev = 5 segments (plan 2.4.1): the 5 lowest segment ids of the crawl's random
@@ -46,11 +47,61 @@ def main() -> None:
         # Persist once: the counts below and, from Story 2.4, the two writes all reuse
         # this result instead of re-reading and re-parsing bronze (S2-04).
         parsed = parse_files(raw).persist(StorageLevel.MEMORY_AND_DISK)
-        counts = (
-            parsed.groupBy(F.col("exception").isNull().alias("is_document")).count().collect()
-        )  # two rows of numbers, not corpus data: safe to bring to the driver
-        by_kind = {row.is_document: row["count"] for row in counts}
-        print(f"run_silver: {by_kind.get(True, 0)} documents, {by_kind.get(False, 0)} dead letters")
+        # One aggregate row of numbers, not corpus data: safe to bring to the driver.
+        totals = parsed.agg(
+            F.count(F.when(F.col("exception").isNull(), 1)).alias("documents"),
+            F.count(F.when(F.col("exception").isNotNull(), 1)).alias("dead_letters"),
+            F.count(F.when(F.col("text") == "", 1)).alias("emptied"),
+            F.sum("lines_removed_few_words").alias("few_words"),
+            F.sum("lines_removed_no_sentence_end").alias("no_sentence_end"),
+            F.sum("lines_removed_non_letters").alias("non_letters"),
+        ).first()
+        assert totals is not None
+        print(f"run_silver: {totals.documents} documents, {totals.dead_letters} dead letters")
+        print(
+            f"run_silver: line rules removed A={totals.few_words} B={totals.no_sentence_end} "
+            f"C={totals.non_letters} lines; {totals.emptied} documents left empty"
+        )
+
+        # Pass 1 of the domain rule: the job's first shuffle (S2-07). Persisted because
+        # it is used twice (the report below and pass 2): without it, Spark would run
+        # pass 1 and its shuffle again. It is small: one row per boilerplate line.
+        domain_rules = DomainRules()
+        documents = parsed.where(F.col("exception").isNull())
+        boilerplate = domain_boilerplate(documents.select("domain", "text"), domain_rules)
+        boilerplate = boilerplate.persist(StorageLevel.MEMORY_AND_DISK)
+        found = boilerplate.agg(
+            F.count("*").alias("lines"), F.countDistinct("domain").alias("domains")
+        ).first()
+        assert found is not None
+        print(
+            f"run_silver: pass 1 found {found.lines} boilerplate lines in {found.domains} "
+            f"domains ({max(found.lines - domain_rules.max_entries, 0)} above the "
+            f"{domain_rules.max_entries} cap)"
+        )
+
+        # Pass 2: remove them (a broadcast, no second shuffle), then the total per
+        # document: the silver column boilerplate_lines_removed (S2-07, Q5).
+        cleaned = remove_domain_boilerplate(documents, boilerplate, domain_rules).withColumn(
+            "boilerplate_lines_removed",
+            F.col("lines_removed_few_words")
+            + F.col("lines_removed_no_sentence_end")
+            + F.col("lines_removed_non_letters")
+            + F.col("lines_removed_domain"),
+        )
+        after = cleaned.agg(
+            F.sum("lines_removed_domain").alias("domain_lines"),
+            F.count(F.when(F.col("lines_removed_domain") > 0, 1)).alias("touched"),
+            F.count(F.when(F.col("text") == "", 1)).alias("emptied"),
+            F.sum("boilerplate_lines_removed").alias("total_lines"),
+        ).first()
+        assert after is not None
+        print(
+            f"run_silver: pass 2 removed {after.domain_lines} lines from {after.touched} "
+            f"documents; {after.total_lines} boilerplate lines removed in total; "
+            f"{after.emptied} documents left empty"
+        )
+        boilerplate.unpersist()
         parsed.unpersist()
     finally:
         spark.stop()

@@ -50,13 +50,39 @@ def test_document_text_comes_out_normalized(
     spark: SparkSession, wet_record: WetRecord, tmp_path: Path
 ) -> None:
     """normalize_common runs inside the parse step (S2-06); content_length stays raw."""
-    body = "Home\N{NO-BREAK SPACE}|\N{NO-BREAK SPACE}Contact  \r\n\tNews".encode()
-    menu = tmp_path / "menu.wet.gz"
-    menu.write_bytes(wet_record(body))
-    row = parse_files(read_files(spark, menu)).select("text", "content_length").first()
+    body = (
+        "The\N{NO-BREAK SPACE}committee met  on Friday.\r\n\tIt approved the new budget.  "
+    ).encode()
+    page = tmp_path / "page.wet.gz"
+    page.write_bytes(wet_record(body))
+    row = parse_files(read_files(spark, page)).select("text", "content_length").first()
     assert row is not None
-    assert row.text == "Home | Contact\nNews"
+    assert row.text == "The committee met on Friday.\nIt approved the new budget."
     assert row.content_length == len(body)  # the record as stored in bronze
+
+
+def test_per_line_boilerplate_rules_run_in_the_parse_step(
+    spark: SparkSession, wet_record: WetRecord, tmp_path: Path
+) -> None:
+    """clean_lines runs after normalize_common; its counts travel with the row (S2-07)."""
+    body = "\n".join(
+        [
+            "Home",  # rule A
+            "Latest news from our team",  # rule B
+            "12.99 EUR - 45.00 USD - 3.50 GBP - 1.00 CHF - 9.00 JPY",  # rule C
+            "The committee met on Friday and approved the new budget.",
+        ]
+    ).encode()
+    page = tmp_path / "menu.wet.gz"
+    page.write_bytes(wet_record(body))
+    row = parse_files(read_files(spark, page)).first()
+    assert row is not None
+    assert row.text == "The committee met on Friday and approved the new budget."
+    assert (
+        row.lines_removed_few_words,
+        row.lines_removed_no_sentence_end,
+        row.lines_removed_non_letters,
+    ) == (1, 1, 1)
 
 
 def test_a_bad_record_becomes_a_dead_letter_row(

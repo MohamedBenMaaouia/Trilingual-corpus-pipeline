@@ -10,6 +10,7 @@ import io
 import uuid
 from collections.abc import Iterable, Iterator
 from datetime import datetime
+from functools import partial
 from typing import IO, NamedTuple
 from urllib.parse import urlsplit
 
@@ -26,6 +27,7 @@ from pyspark.sql.types import (
 )
 from tldextract import TLDExtract
 
+from corpus.silver.boilerplate import LineRules, clean_lines
 from corpus.silver.normalize import normalize_common
 
 # The Public Suffix List snapshot bundled with tldextract: no download (the default
@@ -112,7 +114,12 @@ PARSED_SCHEMA = StructType(
         StructField("fetch_date", TimestampType(), True),
         StructField("content_length", LongType(), True),  # the raw record, as in bronze
         StructField("cc_language", StringType(), True),
-        StructField("text", StringType(), True),  # after normalize_common (S2-06)
+        # After normalize_common (S2-06) and the per-line boilerplate rules (S2-07).
+        StructField("text", StringType(), True),
+        # Lines removed by each per-line rule (S2-07); summed into run_metrics later.
+        StructField("lines_removed_few_words", LongType(), True),
+        StructField("lines_removed_no_sentence_end", LongType(), True),
+        StructField("lines_removed_non_letters", LongType(), True),
         StructField("record_offset", LongType(), True),
         StructField("exception", StringType(), True),  # null <=> this row is a document
         StructField("raw", BinaryType(), True),
@@ -122,34 +129,46 @@ _COLUMNS = PARSED_SCHEMA.fieldNames()
 _OBJECT_COLUMNS = [
     f.name for f in PARSED_SCHEMA.fields if isinstance(f.dataType, StringType | BinaryType)
 ]
+_INTEGER_COLUMNS = [f.name for f in PARSED_SCHEMA.fields if isinstance(f.dataType, LongType)]
 
 # Rows per pandas DataFrame handed back to Spark. Bounds executor memory: ~1,000
 # documents of a few KB each, instead of a whole file's ~30,000 at once.
 _ROWS_PER_CHUNK = 1_000
 
 
-def parse_files(files: DataFrame) -> DataFrame:
+def parse_files(files: DataFrame, rules: LineRules | None = None) -> DataFrame:
     """Rows of Spark's binaryFile source (path, content) -> PARSED_SCHEMA rows.
 
-    Document text comes out already through normalize_common. Runs in the executors
-    through mapInPandas. The caller persists the result once and
-    splits it on `exception`, so bronze is read and parsed a single time (S2-04).
+    Document text comes out normalized (normalize_common) and with the per-line
+    boilerplate rules applied. Runs in the executors through mapInPandas. The caller
+    persists the result once and splits it on `exception`, so bronze is read and parsed
+    a single time (S2-04).
     """
-    return files.select("path", "content").mapInPandas(_parse_batches, schema=PARSED_SCHEMA)
+    body = partial(_parse_batches, rules=rules or LineRules())  # shipped to the executors
+    return files.select("path", "content").mapInPandas(body, schema=PARSED_SCHEMA)
 
 
-def _parse_batches(batches: Iterable[pd.DataFrame]) -> Iterator[pd.DataFrame]:
+def _parse_batches(batches: Iterable[pd.DataFrame], rules: LineRules) -> Iterator[pd.DataFrame]:
     """mapInPandas body: each input row is one whole compressed WET file."""
     for batch in batches:
         for path, content in zip(batch["path"], batch["content"], strict=True):
             chunk: list[dict[str, object]] = []
             for item in parse_wet(io.BytesIO(content)):
+                row: dict[str, object] = {"path": path}
                 if isinstance(item, Document):
-                    # normalize_common here, not as a separate Spark step: the text is
-                    # already in Python, so it costs no second JVM <-> Python transfer
-                    # (S2-06). It must precede boilerplate line hashing (T10).
-                    item = item._replace(text=normalize_common(item.text))
-                chunk.append({"path": path, **item._asdict()})
+                    # Both steps here, not as separate Spark steps: the text is already
+                    # in Python, so there is no second JVM <-> Python transfer (S2-06).
+                    # normalize_common first: the line rules and every later hash must
+                    # see normalized text (T10). The per-line rules run before the
+                    # domain rule's shuffle, so pass 1 moves less data (S2-07).
+                    cleaned = clean_lines(normalize_common(item.text), rules)
+                    item = item._replace(text=cleaned.text)
+                    row |= {
+                        "lines_removed_few_words": cleaned.few_words,
+                        "lines_removed_no_sentence_end": cleaned.no_sentence_end,
+                        "lines_removed_non_letters": cleaned.mostly_non_letters,
+                    }
+                chunk.append(row | item._asdict())
                 if len(chunk) == _ROWS_PER_CHUNK:
                     yield _to_frame(chunk)
                     chunk = []
@@ -170,7 +189,6 @@ def _to_frame(chunk: list[dict[str, object]]) -> pd.DataFrame:
     return frame.astype(
         {
             **{name: object for name in _OBJECT_COLUMNS},  # strings and bytes; nulls stay null
-            "content_length": "Int64",  # pandas' nullable integer (capital I)
-            "record_offset": "Int64",
+            **{name: "Int64" for name in _INTEGER_COLUMNS},  # pandas' nullable integer
         }
     )

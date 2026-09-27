@@ -83,6 +83,21 @@ def is_mostly_non_letters(line: str, rules: LineRules) -> bool:
     return counted > 0 and others / counted > rules.max_non_letter_share
 
 
+def judge_line(line: str, rules: LineRules) -> str | None:
+    """Which per-line rule removes this line: "A", "B", "C", or None to keep it.
+
+    The first rule that catches the line wins (A, then B, then C). Used by clean_lines
+    and by the review export, so both always agree.
+    """
+    if has_few_words(line, rules):
+        return "A"
+    if lacks_sentence_end(line, rules):
+        return "B"
+    if is_mostly_non_letters(line, rules):
+        return "C"
+    return None
+
+
 def clean_lines(text: str, rules: LineRules) -> LineCleaning:
     """Apply rules A, B, C to every line of a normalized text.
 
@@ -91,19 +106,16 @@ def clean_lines(text: str, rules: LineRules) -> LineCleaning:
     add up to the total.
     """
     kept: list[str] = []
-    few = no_end = non_letters = 0
+    removed = {"A": 0, "B": 0, "C": 0}
     for line in text.split("\n"):
         if not line:
             continue
-        if has_few_words(line, rules):
-            few += 1
-        elif lacks_sentence_end(line, rules):
-            no_end += 1
-        elif is_mostly_non_letters(line, rules):
-            non_letters += 1
-        else:
+        rule = judge_line(line, rules)
+        if rule is None:
             kept.append(line)
-    return LineCleaning("\n".join(kept), few, no_end, non_letters)
+        else:
+            removed[rule] += 1
+    return LineCleaning("\n".join(kept), removed["A"], removed["B"], removed["C"])
 
 
 # --- The domain rule, in Spark (built-in functions only, no Python) ----------------------

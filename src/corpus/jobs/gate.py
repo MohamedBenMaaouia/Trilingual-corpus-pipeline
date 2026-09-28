@@ -83,15 +83,19 @@ def record_result(run_id: str, crawl_id: str, gate: str, passed: bool, detail: s
         )
 
 
-def close_run(run_id: str, crawl_id: str, passed: bool) -> None:
-    """Close the run: this gate is Sprint 1's last task. Feeds the success rate (S8).
+def update_run(run_id: str, crawl_id: str, passed: bool) -> None:
+    """A failed gate ends the run ('failed'); a passed gate leaves it open for the tasks
+    after it, and the DAG's last task closes it (S2-10). Before Sprint 2 the gate was the
+    last task and closed the run as 'success', which would now mark a run successful
+    before silver has even run.
 
-    start_run first, so the gate still works when run on its own (by hand, or before
-    Sprint 7 rearranges the DAG): it is an upsert and keeps any seed already recorded.
+    start_run first, so the gate still works when run on its own (by hand): it is an
+    upsert and keeps any seed already recorded.
     """
     with connect() as conn:
         start_run(conn, run_id, crawl_id)
-        finish_run(conn, run_id, "success" if passed else "failed")
+        if not passed:
+            finish_run(conn, run_id, "failed")
 
 
 def main() -> None:
@@ -107,7 +111,7 @@ def main() -> None:
         {"crawl_id": args.crawl_id, "expected_segments": str(args.expected_segments)},
     )
     record_result(args.run_id, args.crawl_id, args.gate, passed, report)
-    close_run(args.run_id, args.crawl_id, passed)
+    update_run(args.run_id, args.crawl_id, passed)
 
     print(report)
     print(f"{args.gate} for {args.crawl_id}: {'PASSED' if passed else 'FAILED'}")

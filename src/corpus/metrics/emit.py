@@ -17,20 +17,27 @@ def start_run(
     *,
     segment_count: int | None = None,
     sample_seed: int | None = None,
+    dev_mode: bool = False,
 ) -> None:
-    """Open (or reopen, on a retry) this run. The seed is what makes it reproducible."""
+    """Open (or reopen, on a retry) this run. The seed is what makes it reproducible.
+
+    dev_mode marks a dev run (5 segments), which never feeds gate baselines (T11). Once
+    marked, a run stays marked: a later call without the flag cannot unmark it.
+    """
     with conn, conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO pipeline_runs (run_id, crawl_id, status, segment_count, sample_seed)
-            VALUES (%s, %s, 'running', %s, %s)
+            INSERT INTO pipeline_runs
+                (run_id, crawl_id, status, segment_count, sample_seed, dev_mode)
+            VALUES (%s, %s, 'running', %s, %s, %s)
             ON CONFLICT (run_id) DO UPDATE
                 SET status = 'running',
                     ended_at = NULL,
                     segment_count = COALESCE(EXCLUDED.segment_count, pipeline_runs.segment_count),
-                    sample_seed = COALESCE(EXCLUDED.sample_seed, pipeline_runs.sample_seed)
+                    sample_seed = COALESCE(EXCLUDED.sample_seed, pipeline_runs.sample_seed),
+                    dev_mode = pipeline_runs.dev_mode OR EXCLUDED.dev_mode
             """,
-            (run_id, crawl_id, segment_count, sample_seed),
+            (run_id, crawl_id, segment_count, sample_seed, dev_mode),
         )
 
 

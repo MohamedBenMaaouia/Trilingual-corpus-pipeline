@@ -55,6 +55,27 @@ def test_reopening_a_run_keeps_what_it_already_knew(conn: Connection, crawl_id: 
     assert run_row(conn) == ("running", 50, 42, False)  # ended_at cleared again
 
 
+def dev_mode_of(conn: Connection) -> bool:
+    with conn.cursor() as cur:
+        cur.execute("SELECT dev_mode FROM pipeline_runs WHERE run_id = %s", (RUN_ID,))
+        row = cur.fetchone()
+        assert row is not None
+        return bool(row[0])
+
+
+def test_runs_are_full_runs_unless_marked(conn: Connection, crawl_id: str) -> None:
+    start_run(conn, RUN_ID, crawl_id)
+    assert dev_mode_of(conn) is False
+
+
+def test_a_dev_run_stays_marked_across_retries(conn: Connection, crawl_id: str) -> None:
+    """Dev numbers must never feed gate baselines (T11): a later call without the flag,
+    e.g. a gate reopening the run, must not unmark it (S2-10)."""
+    start_run(conn, RUN_ID, crawl_id, dev_mode=True)
+    start_run(conn, RUN_ID, crawl_id)
+    assert dev_mode_of(conn) is True
+
+
 def test_an_unknown_status_is_refused(conn: Connection, crawl_id: str) -> None:
     start_run(conn, RUN_ID, crawl_id)
     with pytest.raises(ValueError, match="status must be"):

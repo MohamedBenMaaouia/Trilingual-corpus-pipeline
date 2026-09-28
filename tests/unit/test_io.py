@@ -9,6 +9,8 @@ from corpus.io import (
     bronze_object,
     bronze_path,
     bronze_tmp_object,
+    dead_letter_path,
+    silver_stage1_path,
     spark_events_path,
     split_s3a,
 )
@@ -84,3 +86,44 @@ def test_split_s3a_refuses_anything_else(bad: str) -> None:
 
 def test_event_log_path() -> None:
     assert spark_events_path() == "s3a://corpus-meta/spark-events"
+
+
+# Silver output and dead letters (Story 2.4, S2-10) -------------------------------------
+
+CRAWL = "CC-MAIN-2026-39"
+
+
+def test_silver_stage1_layout() -> None:
+    assert silver_stage1_path(CRAWL, dev=False) == (
+        "s3a://corpus-silver/_stage1/crawl_id=CC-MAIN-2026-39"
+    )
+    assert silver_stage1_path(CRAWL, dev=True) == (
+        "s3a://corpus-silver/_dev/_stage1/crawl_id=CC-MAIN-2026-39"
+    )
+
+
+def test_dead_letter_layout() -> None:
+    assert dead_letter_path("silver", CRAWL, dev=False) == (
+        "s3a://corpus-meta/dead_letter/silver/crawl_id=CC-MAIN-2026-39"
+    )
+    assert dead_letter_path("silver", CRAWL, dev=True) == (
+        "s3a://corpus-meta/_dev/dead_letter/silver/crawl_id=CC-MAIN-2026-39"
+    )
+
+
+def test_dev_and_full_outputs_never_overlap() -> None:
+    """Neither path is inside the other, so overwriting one can never touch the other (T11)."""
+    full, dev = silver_stage1_path(CRAWL, dev=False), silver_stage1_path(CRAWL, dev=True)
+    assert not dev.startswith(full + "/") and not full.startswith(dev + "/")
+
+
+def test_output_paths_reject_a_bad_crawl_id() -> None:
+    with pytest.raises(ValueError):
+        silver_stage1_path("CC-MAIN-2026", dev=False)
+    with pytest.raises(ValueError):
+        dead_letter_path("silver", "../etc", dev=False)
+
+
+def test_dead_letters_only_for_known_stages() -> None:
+    with pytest.raises(ValueError, match="unknown stage"):
+        dead_letter_path("silvr", CRAWL, dev=False)

@@ -1,6 +1,6 @@
 """The pipeline's DAG.
 
-Sprint 1: acquire -> download. Sprint 7 completes the chain:
+Sprint 2: acquire -> download -> gate_a -> silver. Sprint 7 completes the chain:
 acquire -> download -> gate_a -> silver -> gate_b -> dedup -> gate_c -> gold -> stats.
 
 This file says WHAT to run and WHEN, never HOW (invariant 13): the logic lives in
@@ -23,11 +23,11 @@ SAMPLE_SEED = 42  # fixes WHICH segments; constant across crawls so sampling nev
 
 with DAG(
     dag_id="corpus_monthly",
-    description="Trilingual web corpus pipeline (S1: bronze ingestion)",
+    description="Trilingual web corpus pipeline (S2: bronze ingestion + silver part 1)",
     schedule=None,  # manual trigger only; scheduling is Sprint 7
     start_date=datetime(2026, 9, 1),
     catchup=False,  # never backfill past runs on its own
-    tags=["corpus", "sprint-1"],
+    tags=["corpus", "sprint-2"],
 ):
     # Decide what this run consists of: one pending row per sampled segment.
     # Safe to rerun: ON CONFLICT DO NOTHING leaves existing rows alone.
@@ -63,4 +63,16 @@ with DAG(
         ),
     )
 
-    acquire >> download >> gate_a  # each task runs only if the previous succeeded
+    # Silver, Sprint 2 part: parse, normalize, remove boilerplate, write the interim
+    # output and its dead letters for all N segments (plan 2.4.3). A Spark job: its
+    # driver runs here in the scheduler container, its executors on the workers. The
+    # last task for now, so it closes the run: success, or failed if it crashes (S2-10).
+    silver = BashOperator(
+        task_id="silver",
+        bash_command=(
+            f"{CORPUS_PYTHON} -m corpus.jobs.run_silver --crawl-id {CRAWL_ID} "
+            '--run-id "{{ run_id }}"'
+        ),
+    )
+
+    acquire >> download >> gate_a >> silver  # each task runs only if the previous succeeded

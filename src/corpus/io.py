@@ -57,6 +57,36 @@ def split_s3a(uri: str) -> tuple[str, str]:
     return bucket, key
 
 
+def _layer_root(root: str, dev: bool) -> str:
+    """Dev runs write under <root>/_dev, never beside full runs (T11). The leading "_"
+    makes Spark treat the folder as hidden when it discovers a table's partitions."""
+    return f"{root}/_dev" if dev else root
+
+
+def silver_stage1_path(crawl_id: str, *, dev: bool) -> str:
+    """Sprint 2's interim silver output for one crawl (plan 2.4.1, DECISIONS S2-10), e.g.
+    s3a://corpus-silver/_stage1/crawl_id=CC-MAIN-2026-39
+
+    Crawl-scoped: overwriting it replaces that crawl and nothing else (invariant 6).
+    """
+    check_crawl_id(crawl_id)
+    return f"{_layer_root(get_settings().silver_root, dev)}/_stage1/crawl_id={crawl_id}"
+
+
+# Stages that produce dead letters. Checked, so a typo cannot create a new folder.
+_DEAD_LETTER_STAGES = frozenset({"silver"})
+
+
+def dead_letter_path(stage: str, crawl_id: str, *, dev: bool) -> str:
+    """Records a stage could not process, kept for diagnosis (T1: dead letters in meta), e.g.
+    s3a://corpus-meta/dead_letter/silver/crawl_id=CC-MAIN-2026-39"""
+    if stage not in _DEAD_LETTER_STAGES:
+        raise ValueError(f"unknown stage {stage!r}, expected one of {sorted(_DEAD_LETTER_STAGES)}")
+    check_crawl_id(crawl_id)
+    root = _layer_root(get_settings().meta_root, dev)
+    return f"{root}/dead_letter/{stage}/crawl_id={crawl_id}"
+
+
 def spark_events_path() -> str:
     """Spark event logs, read by the history server (placeholder .keep made by minio-init)."""
     return f"{get_settings().meta_root}/spark-events"

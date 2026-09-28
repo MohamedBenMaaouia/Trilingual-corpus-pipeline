@@ -102,10 +102,11 @@ def test_boilerplate_lines_that_differ_only_invisibly_become_equal() -> None:
 # What it must NOT do --------------------------------------------------------------
 
 
-def test_arabic_letters_marks_and_digits_are_left_to_normalize_arabic() -> None:
-    """Harakat, tatweel, alef forms and Eastern digits are real characters, not variants:
-    NFKC keeps them. Whether to fold them is decision D6 (normalize_arabic)."""
-    arabic = "\u0643\u064e\u062a\u064e\u0628\u064e \u0643\u0640\u062a\u0628 \u0623 \u0663"
+def test_arabic_spelling_is_left_to_the_matching_key() -> None:
+    """Harakat, alef forms and Eastern digits are real characters, not variants: NFKC
+    keeps them, and so does the published text (D6). Only arabic_match_key folds them.
+    (Tatweel is the exception: removed here, see test_arabic.py.)"""
+    arabic = "\u0643\u064e\u062a\u064e\u0628\u064e \u0623 \u0663"
     assert normalize_common(arabic) == arabic
 
 

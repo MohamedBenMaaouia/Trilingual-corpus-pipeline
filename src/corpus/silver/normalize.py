@@ -3,7 +3,12 @@
 Text that looks the same must become the same bytes, or every later hash treats it as
 different: boilerplate line hashing (Story 2.2), exact dedup and MinHash (Sprint 4).
 So normalize_common runs before any of them (invariant 5), on every document.
-The Arabic-only rules (normalize_arabic, decision D6) come later in Story 2.3.
+
+Arabic (decision D6, user: option B, DECISIONS S2-09): the published text only loses
+what carries no information (tatweel, in normalize_common). The lossy folds (vowel
+marks, hamza forms, teh marbuta, alef maqsura, digits) go into arabic_match_key: a
+folded copy computed only when comparing texts (stopwords, dedup hashes), never
+published and never stored.
 """
 
 import re
@@ -19,6 +24,10 @@ _INVISIBLE = re.compile("[\u200b-\u200f\ufeff\u00ad\u2060]")
 # Windows (\r\n) and old Mac (\r) line endings.
 _LINE_ENDINGS = re.compile(r"\r\n?")
 
+# Tatweel stretches a word for looks only (a kashida): removing it loses nothing, so it
+# is the one Arabic rule applied to the published text (D6). Only Arabic script uses it.
+_TATWEEL = "\N{ARABIC TATWEEL}"
+
 
 def normalize_common(text: str) -> str:
     """The normalization every document gets, whatever its language.
@@ -29,6 +38,7 @@ def normalize_common(text: str) -> str:
     line structure drives boilerplate removal and the line-based quality signals.
     """
     text = _INVISIBLE.sub("", text)
+    text = text.replace(_TATWEEL, "")  # decoration only: the same word without it (D6)
     # NFKC: canonical equivalents composed (e + combining acute -> é) and compatibility
     # variants folded (ligatures, full-width, no-break spaces, Arabic presentation
     # forms). Lossy on purpose, e.g. m² -> m2 (S2-06).
@@ -40,3 +50,46 @@ def normalize_common(text: str) -> str:
     # and it hashes like "Menu Home" in boilerplate detection. A regex doing the same
     # was 34% slower overall: it rewrote every single space between words (S2-06).
     return "\n".join(" ".join(line.split()) for line in text.split("\n"))
+
+
+# --- The Arabic matching key (D6) ----------------------------------------------------------
+# Every rule below loses information, which is why none of them touches the published
+# text. Each entry of the table maps a character to its folded form (None = delete).
+
+# Harakat, the short-vowel and related marks: fathatan (U+064B) to sukun (U+0652), plus
+# the superscript alef (U+0670). Vocalized text (Quran, poetry, teaching) loses its vowels.
+_HARAKAT = [chr(code) for code in range(0x064B, 0x0653)] + ["\N{ARABIC LETTER SUPERSCRIPT ALEF}"]
+
+_ALEF = "\N{ARABIC LETTER ALEF}"
+_YEH = "\N{ARABIC LETTER YEH}"
+
+_ARABIC_KEY = str.maketrans(
+    {
+        **{mark: None for mark in _HARAKAT},
+        _TATWEEL: None,  # already gone from normalized text; kept so the key stands alone
+        # Alef forms -> bare alef. Standard spelling writes the hamza; web text often omits it.
+        "\N{ARABIC LETTER ALEF WITH HAMZA ABOVE}": _ALEF,
+        "\N{ARABIC LETTER ALEF WITH HAMZA BELOW}": _ALEF,
+        "\N{ARABIC LETTER ALEF WITH MADDA ABOVE}": _ALEF,
+        "\N{ARABIC LETTER ALEF WASLA}": _ALEF,
+        # Hamza carriers (spec, C11) -> the bare carrier letter. The lone hamza stays.
+        "\N{ARABIC LETTER WAW WITH HAMZA ABOVE}": "\N{ARABIC LETTER WAW}",
+        "\N{ARABIC LETTER YEH WITH HAMZA ABOVE}": _YEH,
+        # Policy choices (S2-09), both lossy, some corpora fold the other way round:
+        "\N{ARABIC LETTER TEH MARBUTA}": "\N{ARABIC LETTER HEH}",  # the common web spelling
+        "\N{ARABIC LETTER ALEF MAKSURA}": _YEH,  # merges "ala" (on) with "Ali" (the name)
+        # Eastern Arabic (U+0660-U+0669) and Persian (U+06F0-U+06F9) digits -> 0-9.
+        **{chr(0x0660 + digit): str(digit) for digit in range(10)},
+        **{chr(0x06F0 + digit): str(digit) for digit in range(10)},
+    }
+)
+
+
+def arabic_match_key(text: str) -> str:
+    """A folded copy of normalized text, for comparing only: never published (D6).
+
+    Two spellings of one Arabic word get the same key (e.g. with or without vowel marks
+    or hamza). Only Arabic-script characters change, so it is safe on any document.
+    Expects normalize_common's output; idempotent.
+    """
+    return text.translate(_ARABIC_KEY)

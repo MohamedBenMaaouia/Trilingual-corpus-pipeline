@@ -42,7 +42,10 @@ class DomainRules:
 
     min_share: float = 0.30  # boilerplate if in MORE than 30% of the domain's documents...
     min_documents: int = 5  # ...and in at least 5 of them (a floor for small domains)
-    max_entries: int = 10_000  # broadcast cap for pass 2: keeps the broadcast small
+    # Broadcast cap for pass 2. The plan's 10,000 cut 84% of the 63,477 entries found at
+    # N = 50, while all of them measure ~1 MB, far below what a broadcast handles
+    # (DECISIONS S2-12). Kept as a safety limit; the metric counts anything above it.
+    max_entries: int = 100_000
 
 
 class LineCleaning(NamedTuple):

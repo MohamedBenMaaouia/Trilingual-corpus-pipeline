@@ -10,7 +10,7 @@ import argparse
 import time
 
 from pyspark import StorageLevel
-from pyspark.sql import SparkSession
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
 from corpus.bronze.control import SegmentControl
@@ -36,6 +36,23 @@ DEV_SEGMENTS = 5
 
 DEAD_LETTER_COLUMNS = ["path", "record_offset", "exception", "raw"]
 
+# One bronze file per task (plan 2.1.5, DECISIONS S2-11). Spark packs files into a task
+# while (size so far + next file) <= this target, adding a 4 MiB "open cost" per file.
+# Any target below 4 MiB therefore closes the task after its first file; gzip files are
+# never split. Left at the 128 MiB default, two ~63 MB files fit together: the first full
+# run got 34 tasks for 50 files, and executors with two files per task ran out of heap.
+ONE_FILE_PER_TASK_BYTES = 1024 * 1024
+
+
+def read_bronze_files(spark: SparkSession, paths: list[str]) -> DataFrame:
+    """The bronze files as binaryFile rows (path, content, ...), exactly one file per task.
+
+    The setting stays on for the whole session: Spark plans the read when the first
+    result is requested, not at load(), so switching it back here would undo it.
+    """
+    spark.conf.set("spark.sql.files.maxPartitionBytes", str(ONE_FILE_PER_TASK_BYTES))
+    return spark.read.format("binaryFile").load(paths)
+
 
 def build_stage1(
     spark: SparkSession,
@@ -53,9 +70,13 @@ def build_stage1(
 
     # binaryFile: one row per file, read through S3A as the processing user, who can read
     # bronze and never write it (S2-02). Persisted: every step below reuses the parse
-    # instead of re-reading and re-parsing bronze (S2-04).
-    raw = spark.read.format("binaryFile").load([path for _, path in files])
-    parsed = parse_files(raw, line_rules).persist(StorageLevel.MEMORY_AND_DISK)
+    # instead of re-reading and re-parsing bronze (S2-04). DISK_ONLY (S2-11): at 50
+    # segments the cache is ~1 GB per executor; held in the heap it left too little room
+    # for the tasks (each handles a ~65 MB file), and executors died of OutOfMemoryError,
+    # losing their cached share and forcing bronze to be re-read. On local disk it is
+    # written once and read back a few times, which is cheap.
+    raw = read_bronze_files(spark, [path for _, path in files])
+    parsed = parse_files(raw, line_rules).persist(StorageLevel.DISK_ONLY)
     documents = parsed.where(F.col("exception").isNull())
 
     # Domain rule, pass 1: the first shuffle (S2-07). Persisted: used twice (the metrics

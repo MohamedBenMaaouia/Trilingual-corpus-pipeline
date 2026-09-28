@@ -18,7 +18,7 @@ from pyspark.sql import functions as F
 from corpus.bronze.control import SegmentControl
 from corpus.db import connect
 from corpus.io import check_crawl_id
-from corpus.jobs.run_silver import DEV_SEGMENTS
+from corpus.jobs.run_silver import DEV_SEGMENTS, read_bronze_files
 from corpus.session import get_session
 from corpus.silver.boilerplate import (
     DomainRules,
@@ -169,7 +169,7 @@ def main() -> None:
 
     spark = get_session(f"review boilerplate {args.crawl_id}")
     try:
-        raw = spark.read.format("binaryFile").load([key for _, key in files])
+        raw = read_bronze_files(spark, [key for _, key in files])  # one file per task
         documents = F.col("exception").isNull()
         before = (
             parse_files(raw, KEEP_EVERYTHING)

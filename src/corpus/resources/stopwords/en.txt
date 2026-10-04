@@ -1,0 +1,10 @@
+# Gopher's stopword list (Rae et al. 2021, "Scaling Language Models", appendix A.1.1):
+# a document needs at least 2 of these 8 words. One word per line; "#" starts a comment.
+the
+be
+to
+of
+and
+that
+have
+with

@@ -1,0 +1,12 @@
+# 8 very frequent Modern Standard Arabic function words, the counterpart of Gopher's
+# English 8 (DECISIONS S3-08; drafted by Claude, to be checked by the user). Written in
+# standard spelling: the loader applies arabic_match_key, as to the text, so "على" also
+# matches "علي" and "إلى" matches "الى" (trap S3). One word per line.
+في
+من
+على
+إلى
+أن
+عن
+مع
+هذا

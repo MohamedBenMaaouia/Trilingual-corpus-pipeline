@@ -1,0 +1,10 @@
+# 8 very frequent French function words, the counterpart of Gopher's English 8
+# (DECISIONS S3-08; drafted by Claude, to be checked by the user). One word per line.
+le
+la
+les
+de
+des
+et
+est
+que

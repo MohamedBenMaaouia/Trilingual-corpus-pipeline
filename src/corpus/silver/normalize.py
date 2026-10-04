@@ -85,6 +85,20 @@ _ARABIC_KEY = str.maketrans(
 )
 
 
+def arabic_key_translation() -> tuple[str, str]:
+    """The same key as (matching, replacement) strings for Spark's built-in translate().
+
+    Spark's translate(text, matching, replacement) maps the i-th matching character to
+    the i-th replacement character and deletes matching characters that have none, so
+    the mapped characters come first and the deleted ones (marks, tatweel) last. One
+    table, two engines: a test checks Spark's result equals arabic_match_key's.
+    """
+    mapped = [(chr(code), target) for code, target in _ARABIC_KEY.items() if target is not None]
+    deleted = [chr(code) for code, target in _ARABIC_KEY.items() if target is None]
+    matching = "".join(source for source, _ in mapped) + "".join(deleted)
+    return matching, "".join(str(target) for _, target in mapped)
+
+
 def arabic_match_key(text: str) -> str:
     """A folded copy of normalized text, for comparing only: never published (D6).
 

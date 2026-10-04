@@ -20,6 +20,7 @@ dependencies = [
     "tldextract>=5",            # registered domain from a URL (S2–S3)
     "pyarrow>=14",              # Arrow: Spark<->pandas transfer, pandas_udf
     "pandas>=2,<3",             # pandas_udf batches; PySpark 3.5 predates pandas 3
+    "phonenumbers>=8.13",       # phone numbers found and validated for PII redaction (S3, D9)
 ]
 
 [project.optional-dependencies]
@@ -37,6 +38,7 @@ dev = [
     "mypy>=1.10",      # static type checker
     "types-requests>=2.32",   # requests ships no type hints; mypy needs these
     "types-psycopg2>=2.9",    # same for psycopg2 (also types cursor.rowcount as int)
+    "pandas-stubs>=2.2,<3",   # type hints for pandas 2.x (S3; mypy skipped pandas before)
     "duckdb>=1",       # quick SQL over Parquet outputs when inspecting runs
     "matplotlib>=3.8", # plots: LSH curve (S4), before/after charts
 ]
@@ -63,11 +65,11 @@ mypy_path = "src:."
 # Teaches mypy that settings fields may come from the environment, not only __init__ args.
 plugins = ["pydantic.mypy"]
 
-# boto3/botocore ship no type hints (the stubs are a separate, huge package). Same for
-# pandas (pandas-stubs is a separate package; add it with the next dependency batch).
-# fasttext ships none and has no stubs package: silver/language.py types what it uses.
+# boto3/botocore ship no type hints (the stubs are a separate, huge package). fasttext
+# ships none and has no stubs package: silver/language.py types what it uses. pandas is
+# typed by pandas-stubs since S3; phonenumbers ships its own hints.
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*", "pandas.*", "fasttext", "fasttext.*"]
+module = ["boto3.*", "botocore.*", "fasttext", "fasttext.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

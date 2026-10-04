@@ -69,6 +69,12 @@ RUN --mount=type=cache,target=/uv-cache \
 FROM runtime AS test
 RUN --mount=type=cache,target=/uv-cache \
     UV_CACHE_DIR=/uv-cache uv sync --frozen --group dev --extra spark
+# Soda in its own virtualenv, exactly as in the Airflow image (DECISIONS S1-06), so the
+# gate tests run the real Soda scan (S3: Gate B must fail on a corrupted batch).
+RUN --mount=type=cache,target=/uv-cache \
+    UV_CACHE_DIR=/uv-cache uv venv /opt/soda-venv --python /usr/local/bin/python3.11 \
+ && UV_CACHE_DIR=/uv-cache VIRTUAL_ENV=/opt/soda-venv \
+    uv pip install --python /opt/soda-venv/bin/python soda-core-postgres==3.5.6
 # The repo is mounted read-only at /opt/corpus: tool caches go to /tmp instead.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     MYPY_CACHE_DIR=/tmp/mypy_cache \

@@ -147,9 +147,9 @@ def detect_languages(docs: DataFrame, rules: LanguageRules | None = None) -> Dat
     """
     rules = rules or LanguageRules()
 
-    # pandas has no type hints until pandas-stubs is added (CLAUDE.md open items), so
-    # mypy can match neither pyspark's typed versions of pandas_udf nor the decorated
-    # function; remove the ignore then.
+    # PySpark 3.5's own type hints for pandas_udf list no StructType return type (a
+    # struct result is valid at runtime), so mypy matches no overload and sees the
+    # decorator as untyped. Checked again with pandas-stubs installed (S3): still needed.
     @pandas_udf(LANGUAGE_SCHEMA)  # type: ignore[call-overload, untyped-decorator]
     def detect(texts: pd.Series) -> pd.DataFrame:
         model = language_model()

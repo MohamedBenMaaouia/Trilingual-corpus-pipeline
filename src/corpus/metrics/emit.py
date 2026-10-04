@@ -41,6 +41,19 @@ def start_run(
         )
 
 
+def stamp_versions(
+    conn: Connection, run_id: str, pipeline_version: str, schema_version: str
+) -> None:
+    """Record which logic (D8) and which contract produced this run's silver data."""
+    with conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE pipeline_runs SET pipeline_version = %s, schema_version = %s WHERE run_id = %s",
+            (pipeline_version, schema_version, run_id),
+        )
+        if cur.rowcount == 0:
+            raise ValueError(f"no pipeline_runs row for run_id={run_id!r}: start_run first")
+
+
 def finish_run(conn: Connection, run_id: str, status: str) -> None:
     """Close the run: 'success' or 'failed'. Feeds the success-rate metric (S8)."""
     if status not in ("success", "failed"):

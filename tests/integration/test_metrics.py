@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import pytest
 from psycopg2.extensions import connection as Connection
 
-from corpus.metrics.emit import emit, finish_run, start_run
+from corpus.metrics.emit import emit, finish_run, stamp_versions, start_run
 
 pytestmark = pytest.mark.integration
 
@@ -115,3 +115,19 @@ def test_re_emitting_updates_instead_of_duplicating(conn: Connection, crawl_id: 
 def test_emitting_nothing_is_a_no_op(conn: Connection, crawl_id: str) -> None:
     assert emit(conn, RUN_ID, crawl_id, STAGE, {}) == 0
     assert metrics_of(conn) == {}
+
+
+def test_stamp_versions_records_logic_and_contract(conn: Connection, crawl_id: str) -> None:
+    start_run(conn, RUN_ID, crawl_id)
+    stamp_versions(conn, RUN_ID, "1", "silver_v1")
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT pipeline_version, schema_version FROM pipeline_runs WHERE run_id = %s",
+            (RUN_ID,),
+        )
+        assert cur.fetchone() == ("1", "silver_v1")
+
+
+def test_stamp_versions_refuses_an_unknown_run(conn: Connection) -> None:
+    with pytest.raises(ValueError, match="no pipeline_runs row"):
+        stamp_versions(conn, "no-such-run", "1", "silver_v1")

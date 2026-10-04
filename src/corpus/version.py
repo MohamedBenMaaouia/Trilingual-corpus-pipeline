@@ -7,6 +7,9 @@ tests, docs or the DAG alone does not bump it.
 
 History:
 1  Sprint 3: first silver_v1 (language ID, quality, PII; DECISIONS S3-04 to S3-09).
+   Sprint 4: first dedup (exact + MinHash 128, 5-grams, seed 42, LSH 16 x 8, pairs
+   checked at t; DECISIONS S4-02 to S4-07). Added, not changed: nothing downstream
+   existed, so no backfill (S4-06). Any later change to these bumps the version.
 """
 
 PIPELINE_VERSION = "1"

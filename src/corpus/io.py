@@ -2,7 +2,7 @@
 
 Every path starts from a layer root in corpus.config, so the same call gives an
 s3a:// path locally and an abfss:// path on Azure. Builders are added in the
-sprint that first uses them (silver_path, gold_path, signature_store_path later).
+sprint that first uses them (gold_path in Sprint 6; no signature store, S3-05).
 """
 
 import re
@@ -86,6 +86,18 @@ def silver_v1_crawl_glob(crawl_id: str, *, dev: bool) -> str:
     """Every folder of one crawl in silver_v1, as a glob: what a rerun deletes (D18)."""
     check_crawl_id(crawl_id)
     return f"{silver_v1_path(dev=dev)}/language=*/quality_tier=*/crawl_id={crawl_id}"
+
+
+def dedup_path(crawl_id: str, *, dev: bool) -> str:
+    """Stage 3's output for one crawl (Sprint 4, DECISIONS S4-06): one row per kept
+    silver page, its cluster and whether gold keeps it, e.g.
+    s3a://corpus-gold/dedup/crawl_id=CC-MAIN-2026-39
+
+    In the gold bucket: it decides what gold contains, so it lives and is cleaned with
+    gold (T1, the Makefile's clean-gold). Crawl-scoped: overwriting it replaces that
+    crawl and nothing else (invariant 6)."""
+    check_crawl_id(crawl_id)
+    return f"{_layer_root(get_settings().gold_root, dev)}/dedup/crawl_id={crawl_id}"
 
 
 # Stages that produce dead letters. Checked, so a typo cannot create a new folder.

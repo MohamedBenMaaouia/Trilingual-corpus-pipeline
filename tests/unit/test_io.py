@@ -10,6 +10,7 @@ from corpus.io import (
     bronze_path,
     bronze_tmp_object,
     dead_letter_path,
+    dedup_path,
     lid_model_path,
     silver_stage1_path,
     spark_events_path,
@@ -129,6 +130,14 @@ def test_output_paths_reject_a_bad_crawl_id() -> None:
 def test_dead_letters_only_for_known_stages() -> None:
     with pytest.raises(ValueError, match="unknown stage"):
         dead_letter_path("silvr", CRAWL, dev=False)
+
+
+def test_dedup_layout() -> None:
+    """One crawl's folder beside gold (S4-06); dev runs under _dev (T11)."""
+    assert dedup_path(CRAWL, dev=False) == "s3a://corpus-gold/dedup/crawl_id=CC-MAIN-2026-39"
+    assert dedup_path(CRAWL, dev=True) == "s3a://corpus-gold/_dev/dedup/crawl_id=CC-MAIN-2026-39"
+    with pytest.raises(ValueError):
+        dedup_path("CC-MAIN-2026-39/..", dev=False)
 
 
 # Language ID model (Story 3.1) ---------------------------------------------------------

@@ -73,6 +73,21 @@ def silver_stage1_path(crawl_id: str, *, dev: bool) -> str:
     return f"{_layer_root(get_settings().silver_root, dev)}/_stage1/crawl_id={crawl_id}"
 
 
+def silver_v1_path(*, dev: bool) -> str:
+    """The silver table, all crawls (plan 3.5.1, DECISIONS S3-09), e.g.
+    s3a://corpus-silver/silver_v1/language=ar/quality_tier=high/crawl_id=CC-MAIN-2026-39
+
+    Partitioned by language, quality tier, crawl. Never overwritten as a whole: a rerun
+    replaces one crawl's folders only (D18, silver_v1_crawl_glob)."""
+    return f"{_layer_root(get_settings().silver_root, dev)}/silver_v1"
+
+
+def silver_v1_crawl_glob(crawl_id: str, *, dev: bool) -> str:
+    """Every folder of one crawl in silver_v1, as a glob: what a rerun deletes (D18)."""
+    check_crawl_id(crawl_id)
+    return f"{silver_v1_path(dev=dev)}/language=*/quality_tier=*/crawl_id={crawl_id}"
+
+
 # Stages that produce dead letters. Checked, so a typo cannot create a new folder.
 _DEAD_LETTER_STAGES = frozenset({"silver"})
 

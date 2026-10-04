@@ -2,54 +2,19 @@
 
 The real model (126 MB) never enters the repository, and Spark runs the language step
 in separate Python worker processes, where a fake swapped in by the test would not
-reach. So the test builds a toy fastText model (3 languages, 60 sentences, ~2 KB, well
-under a second) and ships it with addFile under the real file name, exactly as the job
-ships lid.176.bin. What is tested is the mechanism, not fastText's accuracy.
+reach. So the tests use a toy fastText model (conftest.py: 3 languages, 60 sentences,
+~2 KB) shipped with addFile under the real file name, exactly as the job ships
+lid.176.bin. What is tested is the mechanism, not fastText's accuracy.
 """
 
-import fasttext
 import pytest
 from pyspark.sql import DataFrame, SparkSession
 
 from corpus.silver.language import (
     LANGUAGE_NOT_TARGETED,
     LANGUAGE_SCHEMA,
-    MODEL_FILE,
     detect_languages,
 )
-
-TRAINING = [
-    "__label__en the cat is on the table and the dog is in the garden",
-    "__label__fr le chat est sur la table et le chien est dans le jardin",
-    "__label__de die katze ist auf dem tisch und der hund ist im garten",
-]
-
-
-@pytest.fixture(scope="module")
-def toy_model(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> None:
-    """Train the toy model and register it with Spark as lid.176.bin.
-
-    One thread and a fixed seed: the same model on every run. Registered once: Spark
-    refuses a second, different file under the same name in one session.
-    """
-    folder = tmp_path_factory.mktemp("lid")
-    training = folder / "train.txt"
-    training.write_text("\n".join(TRAINING * 20) + "\n", encoding="utf-8")
-    model = fasttext.train_supervised(
-        input=str(training),
-        epoch=25,
-        lr=1.0,
-        dim=8,
-        minn=0,
-        maxn=0,
-        bucket=0,
-        thread=1,
-        seed=42,
-        verbose=0,
-    )
-    path = folder / MODEL_FILE
-    model.save_model(str(path))
-    spark.sparkContext.addFile(str(path))
 
 
 def documents(spark: SparkSession) -> DataFrame:

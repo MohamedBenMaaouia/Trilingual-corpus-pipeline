@@ -1,7 +1,7 @@
 """The pipeline's DAG.
 
-Sprint 2: acquire -> download -> gate_a -> silver. Sprint 7 completes the chain:
-acquire -> download -> gate_a -> silver -> gate_b -> dedup -> gate_c -> gold -> stats.
+Sprint 3: acquire -> download -> gate_a -> silver -> silver_v1 -> gate_b. Sprint 7
+completes the chain: ... -> gate_b -> dedup -> gold -> stats (no gate_c: cut, S3-05).
 
 This file says WHAT to run and WHEN, never HOW (invariant 13): the logic lives in
 the corpus package. On Databricks (Sprint 10) only the launching lines change.
@@ -23,11 +23,11 @@ SAMPLE_SEED = 42  # fixes WHICH segments; constant across crawls so sampling nev
 
 with DAG(
     dag_id="corpus_monthly",
-    description="Trilingual web corpus pipeline (S2: bronze ingestion + silver part 1)",
+    description="Trilingual web corpus pipeline (S3: bronze + silver + Gate B)",
     schedule=None,  # manual trigger only; scheduling is Sprint 7
     start_date=datetime(2026, 9, 1),
     catchup=False,  # never backfill past runs on its own
-    tags=["corpus", "sprint-2"],
+    tags=["corpus", "sprint-3"],
 ):
     # Decide what this run consists of: one pending row per sampled segment.
     # Safe to rerun: ON CONFLICT DO NOTHING leaves existing rows alone.
@@ -65,14 +65,36 @@ with DAG(
 
     # Silver, Sprint 2 part: parse, normalize, remove boilerplate, write the interim
     # output and its dead letters for all N segments (plan 2.4.3). A Spark job: its
-    # driver runs here in the scheduler container, its executors on the workers. The
-    # last task for now, so it closes the run: success, or failed if it crashes (S2-10).
+    # driver runs here in the scheduler container, its executors on the workers. Not
+    # the last task any more: it leaves the run open (a crash still closes it failed).
     silver = BashOperator(
         task_id="silver",
         bash_command=(
             f"{CORPUS_PYTHON} -m corpus.jobs.run_silver --crawl-id {CRAWL_ID} "
-            '--run-id "{{ run_id }}"'
+            '--run-id "{{ run_id }}" --keep-run-open'
         ),
     )
 
-    acquire >> download >> gate_a >> silver  # each task runs only if the previous succeeded
+    # Silver, Sprint 3 part: language, PII redaction, quality, the silver_v1 contract,
+    # written crawl by crawl (S3-04, S3-09). Reads the interim output, never bronze.
+    silver_v1 = BashOperator(
+        task_id="silver_v1",
+        bash_command=(
+            f"{CORPUS_PYTHON} -m corpus.jobs.run_silver_v1 --crawl-id {CRAWL_ID} "
+            '--run-id "{{ run_id }}" --keep-run-open'
+        ),
+    )
+
+    # Gate B: is this run's silver complete and inside its contract? A failure stops
+    # the DAG before dedup (invariant 8). The last task for now: a pass closes the run
+    # as success (--final), a failure closes it as failed.
+    gate_b = BashOperator(
+        task_id="gate_b",
+        bash_command=(
+            f"{CORPUS_PYTHON} -m corpus.jobs.gate --gate gate_b --crawl-id {CRAWL_ID} "
+            '--run-id "{{ run_id }}" --final'
+        ),
+    )
+
+    # Each task runs only if the previous one succeeded.
+    acquire >> download >> gate_a >> silver >> silver_v1 >> gate_b

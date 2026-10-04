@@ -1,7 +1,9 @@
-"""Run a quality gate and record its verdict (Story 1.5).
+"""Run a quality gate and record its verdict (Story 1.5; Gate B: Story 3.5).
 
     python -m corpus.jobs.gate --gate gate_a --crawl-id CC-MAIN-2026-39 \
         --expected-segments 50 --run-id manual__2026-09-24T10:00:00
+    python -m corpus.jobs.gate --gate gate_b --crawl-id CC-MAIN-2026-39 \
+        --run-id manual__2026-09-24T10:00:00 [--final]
 
 Exits non-zero when a check fails, which stops the DAG (invariant 8). Soda lives in
 its own virtualenv, so it is run as a subprocess rather than imported.
@@ -83,11 +85,12 @@ def record_result(run_id: str, crawl_id: str, gate: str, passed: bool, detail: s
         )
 
 
-def update_run(run_id: str, crawl_id: str, passed: bool) -> None:
+def update_run(run_id: str, crawl_id: str, passed: bool, final: bool = False) -> None:
     """A failed gate ends the run ('failed'); a passed gate leaves it open for the tasks
     after it, and the DAG's last task closes it (S2-10). Before Sprint 2 the gate was the
     last task and closed the run as 'success', which would now mark a run successful
-    before silver has even run.
+    before silver has even run. `final` (S3-09): this gate IS the DAG's last task (Gate
+    B until dedup exists), so a pass closes the run as 'success'.
 
     start_run first, so the gate still works when run on its own (by hand): it is an
     upsert and keeps any seed already recorded.
@@ -96,22 +99,25 @@ def update_run(run_id: str, crawl_id: str, passed: bool) -> None:
         start_run(conn, run_id, crawl_id)
         if not passed:
             finish_run(conn, run_id, "failed")
+        elif final:
+            finish_run(conn, run_id, "success")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gate", default="gate_a", help="name of the checks file")
     parser.add_argument("--crawl-id", required=True)
-    parser.add_argument("--expected-segments", type=int, required=True)
+    parser.add_argument("--expected-segments", type=int, help="Gate A only")
     parser.add_argument("--run-id", required=True, help="Airflow's dag_run.run_id")
+    parser.add_argument("--final", action="store_true", help="last task: a pass closes the run")
     args = parser.parse_args()
 
-    passed, report = run_checks(
-        args.gate,
-        {"crawl_id": args.crawl_id, "expected_segments": str(args.expected_segments)},
-    )
+    variables = {"crawl_id": args.crawl_id, "run_id": args.run_id}
+    if args.expected_segments is not None:
+        variables["expected_segments"] = str(args.expected_segments)
+    passed, report = run_checks(args.gate, variables)
     record_result(args.run_id, args.crawl_id, args.gate, passed, report)
-    update_run(args.run_id, args.crawl_id, passed)
+    update_run(args.run_id, args.crawl_id, passed, final=args.final)
 
     print(report)
     print(f"{args.gate} for {args.crawl_id}: {'PASSED' if passed else 'FAILED'}")

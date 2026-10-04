@@ -1,0 +1,55 @@
+# Gate B (Story 3.5): is this run's silver_v1 complete and inside its contract?
+# Run by corpus.jobs.gate, which passes ${crawl_id} and ${run_id}. A failure stops the
+# DAG: bad silver never reaches dedup (invariant 8).
+#
+# Data source (DECISIONS S3-05, S3-09): Soda checks numbers the silver_v1 job counted
+# over every row and recorded in run_metrics, not the Parquet files themselves (our Soda
+# only has the Postgres connector). A metric the job did not record reads as -1, so a
+# missing number fails its check instead of passing silently.
+# Cut (S3-05): the trailing-baseline checks (row count +-40%, language mix +-15 points).
+
+checks for run_metrics:
+  - documents_written > 0:
+      name: The run wrote silver_v1 rows
+      documents_written query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_documents_written'), -1)
+
+  - documents_lost = 0:
+      name: Every document read was written (nothing lost or doubled)
+      documents_lost query: |
+        SELECT COALESCE((SELECT abs(w.value - r.value) FROM run_metrics w JOIN run_metrics r
+          ON r.run_id = w.run_id AND r.stage = w.stage
+          WHERE w.run_id = '${run_id}' AND w.stage = 'silver'
+            AND w.metric = 'silver_v1_documents_written'
+            AND r.metric = 'silver_v1_documents_read'), -1)
+
+  - schema_ok = 1:
+      name: The rows matched the silver_v1 contract (names, types, order)
+      schema_ok query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_schema_ok'), -1)
+
+  - null_violations = 0:
+      name: No null in a non-null contract column
+      null_violations query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_null_violations'), -1)
+
+  - empty_text_kept = 0:
+      name: Every kept (non-rejected) page has text
+      empty_text_kept query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_empty_text_kept'), -1)
+
+  - unknown_language = 0:
+      name: language is one of en, fr, ar, other
+      unknown_language query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_unknown_language'), -1)
+
+  - unknown_tier = 0:
+      name: quality_tier is one of high, medium, rejected
+      unknown_tier query: |
+        SELECT COALESCE((SELECT value FROM run_metrics WHERE run_id = '${run_id}'
+          AND stage = 'silver' AND metric = 'silver_v1_unknown_tier'), -1)

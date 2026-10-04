@@ -151,6 +151,11 @@ def main() -> None:
     parser.add_argument("--crawl-id", required=True)
     parser.add_argument("--dev", action="store_true", help=f"only {DEV_SEGMENTS} segments")
     parser.add_argument("--run-id", default=None, help="Airflow's run_id; generated if omitted")
+    parser.add_argument(
+        "--keep-run-open",
+        action="store_true",
+        help="not the DAG's last task (S3: silver_v1 and Gate B follow): leave the run open",
+    )
     args = parser.parse_args()
     check_crawl_id(args.crawl_id)
     run_id = args.run_id or default_run_id()
@@ -184,7 +189,8 @@ def main() -> None:
 
     with connect() as conn:
         emit(conn, run_id, args.crawl_id, "silver", metrics)
-        finish_run(conn, run_id, "success")
+        if not args.keep_run_open:
+            finish_run(conn, run_id, "success")
     for name, value in metrics.items():
         print(f"run_silver: {name} = {value:,}")
     print(f"run_silver: wrote {stage1_out} and {dead_out} (run {run_id})")

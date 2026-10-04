@@ -87,6 +87,17 @@ def dead_letter_path(stage: str, crawl_id: str, *, dev: bool) -> str:
     return f"{root}/dead_letter/{stage}/crawl_id={crawl_id}"
 
 
+def lid_model_path() -> str:
+    """fastText's language ID model (plan 3.1.1): uploaded by hand, never committed, e.g.
+    s3a://corpus-meta/models/lid.176.bin
+
+    The job ships it to the executors with addFile, which keeps the file name, so it
+    must stay "lid.176.bin" (silver.language.MODEL_FILE; a test ties the two). Not
+    dev-scoped: dev and full runs use the same model.
+    """
+    return f"{get_settings().meta_root}/models/lid.176.bin"
+
+
 def spark_events_path() -> str:
     """Spark event logs, read by the history server (placeholder .keep made by minio-init)."""
     return f"{get_settings().meta_root}/spark-events"

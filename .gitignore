@@ -3,6 +3,10 @@ CLAUDE.md
 .claude/
 docs/
 
+# Model files: downloaded by hand, uploaded to MinIO, never committed (plan 3.1.1).
+# lid.176.bin is 126 MB, above GitHub's 100 MB per-file limit.
+/models/
+
 # Secrets (invariant 14: .env holds real credentials; .env.example is committed)
 .env
 

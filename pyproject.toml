@@ -65,8 +65,9 @@ plugins = ["pydantic.mypy"]
 
 # boto3/botocore ship no type hints (the stubs are a separate, huge package). Same for
 # pandas (pandas-stubs is a separate package; add it with the next dependency batch).
+# fasttext ships none and has no stubs package: silver/language.py types what it uses.
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*", "pandas.*"]
+module = ["boto3.*", "botocore.*", "pandas.*", "fasttext", "fasttext.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

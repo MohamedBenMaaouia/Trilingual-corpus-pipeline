@@ -10,10 +10,12 @@ from corpus.io import (
     bronze_path,
     bronze_tmp_object,
     dead_letter_path,
+    lid_model_path,
     silver_stage1_path,
     spark_events_path,
     split_s3a,
 )
+from corpus.silver.language import MODEL_FILE
 
 
 @pytest.fixture(autouse=True)
@@ -127,3 +129,15 @@ def test_output_paths_reject_a_bad_crawl_id() -> None:
 def test_dead_letters_only_for_known_stages() -> None:
     with pytest.raises(ValueError, match="unknown stage"):
         dead_letter_path("silvr", CRAWL, dev=False)
+
+
+# Language ID model (Story 3.1) ---------------------------------------------------------
+
+
+def test_lid_model_path() -> None:
+    assert lid_model_path() == "s3a://corpus-meta/models/lid.176.bin"
+
+
+def test_lid_model_file_name_is_what_the_executors_look_for() -> None:
+    # addFile keeps the file name; SparkFiles.get(MODEL_FILE) must find it on the executor.
+    assert lid_model_path().rsplit("/", 1)[1] == MODEL_FILE

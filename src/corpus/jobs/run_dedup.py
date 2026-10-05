@@ -19,7 +19,16 @@ from pyspark.sql import Column, DataFrame, SparkSession
 from pyspark.sql import functions as F
 
 from corpus.db import connect
-from corpus.dedup.banding import LshParams, band_rows, candidate_pairs, verified_pairs
+from corpus.dedup.banding import (
+    LshParams,
+    SaltParams,
+    band_rows,
+    by_bucket,
+    candidate_pairs,
+    hot_buckets,
+    salted_candidate_pairs,
+    verified_pairs,
+)
 from corpus.dedup.clusters import EXACT, NEAR, assign_clusters, connected_components
 from corpus.dedup.exact import exact_hash, exact_representatives
 from corpus.dedup.minhash import MinHashParams, add_signatures
@@ -39,11 +48,18 @@ PREFIX = "dedup"  # run_metrics stage and metric-name prefix
 TOP_KEYS = 20  # the largest buckets, logged (plan 5.4.1)
 TOP_CLUSTERS = 10  # the largest clusters, logged (plan 4.4.3)
 
+# Spark settings for this job, applied at start; --spark-conf overrides them (S5-05).
+# 16 shuffle partitions (4 per core of the 4 we have) instead of Spark's 200: most of
+# this job's shuffles are a few MB to a few hundred MB, and with 200 the steps that
+# read a persisted result or loop (label propagation) ran thousands of tiny tasks.
+SPARK_SETTINGS = {"spark.sql.shuffle.partitions": "16"}
+
 
 @dataclass(frozen=True)
 class DedupParams:
     minhash: MinHashParams = field(default_factory=MinHashParams)
     lsh: LshParams = field(default_factory=LshParams)
+    salt: SaltParams = field(default_factory=SaltParams)
     # Label propagation stops here even if not converged, and says so (plan 4.4.1).
     max_rounds: int = 30
     # Clusters above this size are listed for investigation (plan 4.4.3).
@@ -54,13 +70,21 @@ def _count_if(condition: Column) -> Column:
     return F.sum(F.when(condition, 1).otherwise(0))
 
 
-def bucket_sizes(bands: DataFrame, top: int) -> tuple[dict[str, float], DataFrame]:
+def bucket_sizes(
+    bands: DataFrame, top: int, salt: SaltParams
+) -> tuple[dict[str, float], DataFrame, DataFrame]:
     """How the band rows spread over buckets: the skew evidence (plan 5.4.1) and what
     each way of linking a bucket would cost. A bucket of n pages gives n(n-1)/2 pairs
-    to the self-join (all pairs), or n - 1 links to its smallest page (a star, D11)."""
+    to the self-join (all pairs), or n - 1 links to its smallest page (a star, D11).
+    Also what salting selects (plan 5.4.2): the hot buckets, their share of the pairs,
+    and the right-side rows it copies.
+
+    Returns (metrics, the `top` largest buckets, every bucket's size, persisted)."""
     sizes = bands.groupBy("band_id", "band_hash").agg(F.count("*").alias("rows"))
     sizes = sizes.persist(StorageLevel.DISK_ONLY)
     rows = F.col("rows").cast("long")
+    hot = (rows >= salt.hot_rows) if salt.hot_rows else F.lit(False)
+    pieces = F.least(F.lit(salt.max_salts), F.ceil(rows / salt.rows_per_salt))
     totals = sizes.agg(
         F.count("*").alias("dedup_band_keys"),
         F.sum(rows).alias("dedup_band_rows"),
@@ -68,11 +92,14 @@ def bucket_sizes(bands: DataFrame, top: int) -> tuple[dict[str, float], DataFram
         F.sum(rows * (rows - 1) / 2).alias("dedup_pairs_all_pairs"),
         F.sum(F.when(rows > 1, rows - 1).otherwise(0)).alias("dedup_pairs_star"),
         F.max(rows).alias("dedup_band_key_max_rows"),
+        _count_if(hot).alias("dedup_salt_hot_keys"),
+        F.sum(F.when(hot, rows * (rows - 1) / 2).otherwise(0)).alias("dedup_salt_hot_pairs"),
+        F.sum(F.when(hot, (pieces - 1) * rows).otherwise(0)).alias("dedup_salt_copied_rows"),
     ).first()
     assert totals is not None
     metrics = {k: float(v or 0) for k, v in totals.asDict().items()}
     largest = sizes.orderBy(F.desc("rows"), "band_id", "band_hash").limit(top)
-    return metrics, largest
+    return metrics, largest, sizes
 
 
 def describe_keys(largest: DataFrame, bands: DataFrame, kept: DataFrame) -> list[str]:
@@ -209,16 +236,26 @@ def run_dedup(
     with step(spark, PREFIX, "bands", metrics):
         representatives = docs.where(F.col("doc_id") == F.col("exact_rep")).select("doc_id")
         signed = pages.join(F.broadcast(representatives), "doc_id", "left_semi")
-        bands = band_rows(signed.select("doc_id", "signature"), lsh).persist(StorageLevel.DISK_ONLY)
-        key_metrics, largest = bucket_sizes(bands, TOP_KEYS)
+        # Grouped by bucket once, here: the count below and the self-join reuse it (S5-04).
+        bands = by_bucket(band_rows(signed.select("doc_id", "signature"), lsh))
+        bands = bands.persist(StorageLevel.DISK_ONLY)
+        key_metrics, largest, sizes = bucket_sizes(bands, TOP_KEYS, params.salt)
         metrics.update(key_metrics)
         metrics["dedup_documents_signed"] = key_metrics["dedup_band_rows"] / lsh.bands
         for line in describe_keys(largest, bands, kept):
             print(f"run_dedup: largest bucket: {line}")
 
-    # The band self-join: every two pages sharing a bucket (plan 4.3.2).
+    # The band self-join: every two pages sharing a bucket (plan 4.3.2), the hot
+    # buckets split over several tasks when salting is on (plan 5.4.2).
     with step(spark, PREFIX, "pairs", metrics):
-        pairs = candidate_pairs(bands).persist(StorageLevel.DISK_ONLY)
+        metrics["dedup_salt_enabled"] = int(params.salt.enabled)
+        metrics["dedup_salt_hot_rows"] = params.salt.hot_rows
+        metrics["dedup_salt_rows_per_salt"] = params.salt.rows_per_salt
+        if params.salt.enabled:
+            pairs = salted_candidate_pairs(bands, hot_buckets(sizes, params.salt))
+        else:
+            pairs = candidate_pairs(bands)
+        pairs = pairs.persist(StorageLevel.DISK_ONLY)
         metrics["dedup_candidate_pairs"] = pairs.count()
 
     # Each candidate checked on its whole signature (trap S4: no chaining via weak links).
@@ -264,7 +301,7 @@ def run_dedup(
         result.coalesce(1).write.mode("overwrite").parquet(output)
         metrics["dedup_documents_written"] = spark.read.schema(DEDUP_V1).parquet(output).count()
 
-    for df in (result, edges, pairs, bands, docs, pages):
+    for df in (result, edges, pairs, sizes, bands, docs, pages):
         df.unpersist()
     return metrics
 
@@ -291,6 +328,9 @@ def main() -> None:
     )
     parser.add_argument("--bands", type=int, default=LshParams.bands)
     parser.add_argument("--rows", type=int, default=LshParams.rows)
+    # Tuning experiments (Sprint 5); the DAG passes none of these.
+    parser.add_argument("--salt", action="store_true", help="salt the hot buckets (S5-02)")
+    parser.add_argument("--salt-hot-rows", type=int, default=SaltParams.hot_rows)
     parser.add_argument(
         "--spark-conf",
         action="append",
@@ -301,7 +341,10 @@ def main() -> None:
     args = parser.parse_args()
     check_crawl_id(args.crawl_id)
     run_id = args.run_id or default_run_id()
-    params = DedupParams(lsh=LshParams(bands=args.bands, rows=args.rows))
+    params = DedupParams(
+        lsh=LshParams(bands=args.bands, rows=args.rows),
+        salt=SaltParams(enabled=args.salt, hot_rows=args.salt_hot_rows),
+    )
     output = dedup_path(args.crawl_id, dev=args.dev)
 
     with connect() as conn:
@@ -311,14 +354,19 @@ def main() -> None:
     started = time.monotonic()
     spark = get_session(f"run_dedup {args.crawl_id}{' dev' if args.dev else ''}")
     try:
-        for setting in args.spark_conf:
-            key, _, value = setting.partition("=")
-            spark.conf.set(key, value)
+        for key, setting in SPARK_SETTINGS.items():
+            spark.conf.set(key, setting)
+        for override in args.spark_conf:
+            key, _, setting = override.partition("=")
+            spark.conf.set(key, setting)
         metrics = run_dedup(spark, read_kept(spark, args.crawl_id, dev=args.dev), output, params)
         metrics["dedup_spark_shuffle_partitions"] = float(
             spark.conf.get("spark.sql.shuffle.partitions") or 0
         )
         metrics["dedup_spark_aqe"] = float(spark.conf.get("spark.sql.adaptive.enabled") == "true")
+        # Whether AQE may also merge the partitions of persisted results (S5-05).
+        cached = "spark.sql.optimizer.canChangeCachedPlanOutputPartitioning"
+        metrics["dedup_spark_aqe_cached"] = float(spark.conf.get(cached, "false") == "true")
         metrics.update(step_metrics(spark, PREFIX))
     except Exception:
         with connect() as conn:

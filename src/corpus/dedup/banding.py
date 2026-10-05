@@ -53,10 +53,20 @@ def band_rows(signatures: DataFrame, lsh: LshParams) -> DataFrame:
     )
 
 
+def by_bucket(bands: DataFrame) -> DataFrame:
+    """The band rows, shuffled once so that every bucket sits whole in one partition
+    (Sprint 5, DECISIONS S5-04). Persist the result: then the bucket-size count and the
+    self-join both find their rows already grouped by (band_id, band_hash) and shuffle
+    nothing more. Without it, the self-join shuffled the band rows once per side (AQE
+    on, Spark 3.5 does not reuse that exchange: 2 x 264.6 MB on the full crawl)."""
+    return bands.repartition("band_id", "band_hash")
+
+
 def candidate_pairs(bands: DataFrame) -> DataFrame:
     """(doc_a, doc_b) with doc_a < doc_b, each pair once: every two pages that share a
     bucket. The band self-join (plan 4.3.2), the pipeline's dominant shuffle. A bucket
-    of n pages yields n(n-1)/2 pairs: this is where skew lives (Sprint 5)."""
+    of n pages yields n(n-1)/2 pairs: this is where skew lives (Sprint 5). Fed with
+    by_bucket's persisted rows, it shuffles only its pairs (for the distinct)."""
     left = bands.select("band_id", "band_hash", F.col("doc_id").alias("doc_a"))
     right = bands.select("band_id", "band_hash", F.col("doc_id").alias("doc_b"))
     return (
@@ -64,6 +74,69 @@ def candidate_pairs(bands: DataFrame) -> DataFrame:
         .where(F.col("doc_a") < F.col("doc_b"))  # drops self-pairs and mirror pairs
         .select("doc_a", "doc_b")
         .distinct()  # a pair sharing several buckets is one pair (plan 4.3.3)
+    )
+
+
+@dataclass(frozen=True)
+class SaltParams:
+    """Salting the band self-join's hot buckets (plan 5.4.2, DECISIONS S5-02).
+
+    Chosen by the user from the bucket-size count of the full crawl (S5-01): buckets of
+    50+ pages are 89 of 5,343,227 but make 76.3% of the pairs; splitting them at 50
+    pages per piece copies 19,421 extra rows (+0.4%).
+    """
+
+    # Off by default: measured, salting bought no time on this crawl and would undo
+    # by_bucket's grouping (the salt is part of the join key) (S5-03, S5-05).
+    enabled: bool = False
+    hot_rows: int = 50  # a bucket with at least this many pages is salted
+    rows_per_salt: int = 50  # pages per piece: k = ceil(pages / rows_per_salt)
+    max_salts: int = 16  # cap on k (never reached on CC-MAIN-2026-39: 290 pages -> 6)
+
+
+def hot_buckets(sizes: DataFrame, salt: SaltParams) -> DataFrame:
+    """(band_id, band_hash, salts): the buckets to split, and into how many pieces.
+    `sizes` holds (band_id, band_hash, rows), the pages per bucket. A few rows."""
+    pieces = F.least(F.lit(salt.max_salts), F.ceil(F.col("rows") / salt.rows_per_salt))
+    return sizes.where(F.col("rows") >= salt.hot_rows).select(
+        "band_id", "band_hash", pieces.cast("int").alias("salts")
+    )
+
+
+def salted_candidate_pairs(bands: DataFrame, hot: DataFrame) -> DataFrame:
+    """candidate_pairs, with each hot bucket's work split over k tasks (plan 5.4.2).
+
+    One task joins one bucket: a bucket of n pages costs it n x n comparisons. Here
+    the join key gets a third part, the salt. Left side: each page's salt is
+    pmod(xxhash64(doc_id), k), one of 0..k-1. Right side: each page is copied k times,
+    once per salt. A hot bucket becomes k sub-buckets of about n/k x n rows, hashed to
+    different tasks, and every pair still meets exactly once (under the salt of its
+    left page). Buckets that are not hot get k = 1: salt 0, no copy.
+
+    The salt is a hash of doc_id, never rand(): a retried task must draw the same salts,
+    or left and right stop lining up and pairs are lost or doubled (trap S5).
+    `hot` comes from hot_buckets (a few rows: broadcast, no shuffle).
+    """
+    tagged = bands.join(F.broadcast(hot), ["band_id", "band_hash"], "left").withColumn(
+        "salts", F.coalesce(F.col("salts"), F.lit(1))
+    )
+    left = tagged.select(
+        "band_id",
+        "band_hash",
+        F.col("doc_id").alias("doc_a"),
+        F.pmod(F.xxhash64("doc_id"), F.col("salts")).cast("int").alias("salt"),
+    )
+    right = tagged.select(
+        "band_id",
+        "band_hash",
+        F.col("doc_id").alias("doc_b"),
+        F.explode(F.sequence(F.lit(0), F.col("salts") - 1)).alias("salt"),
+    )
+    return (
+        left.join(right, ["band_id", "band_hash", "salt"])
+        .where(F.col("doc_a") < F.col("doc_b"))
+        .select("doc_a", "doc_b")
+        .distinct()
     )
 
 

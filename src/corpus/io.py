@@ -2,7 +2,7 @@
 
 Every path starts from a layer root in corpus.config, so the same call gives an
 s3a:// path locally and an abfss:// path on Azure. Builders are added in the
-sprint that first uses them (gold_path in Sprint 6; no signature store, S3-05).
+sprint that first uses them (no signature store, S3-05).
 """
 
 import re
@@ -98,6 +98,15 @@ def dedup_path(crawl_id: str, *, dev: bool) -> str:
     crawl and nothing else (invariant 6)."""
     check_crawl_id(crawl_id)
     return f"{_layer_root(get_settings().gold_root, dev)}/dedup/crawl_id={crawl_id}"
+
+
+def gold_documents_path(*, dev: bool) -> str:
+    """The gold table, a Delta table holding every crawl (Sprint 6, DECISIONS S6-02), e.g.
+    s3a://corpus-gold/gold_documents (its log: gold_documents/_delta_log)
+
+    Partitioned by language, quality tier, crawl (D12). Never overwritten as a whole: a
+    rerun replaces one crawl's rows (replaceWhere on crawl_id, gold.write)."""
+    return f"{_layer_root(get_settings().gold_root, dev)}/gold_documents"
 
 
 # Stages that produce dead letters. Checked, so a typo cannot create a new folder.

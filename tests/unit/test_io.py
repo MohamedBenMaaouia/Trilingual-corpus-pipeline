@@ -11,6 +11,7 @@ from corpus.io import (
     bronze_tmp_object,
     dead_letter_path,
     dedup_path,
+    gold_documents_path,
     lid_model_path,
     silver_stage1_path,
     spark_events_path,
@@ -138,6 +139,12 @@ def test_dedup_layout() -> None:
     assert dedup_path(CRAWL, dev=True) == "s3a://corpus-gold/_dev/dedup/crawl_id=CC-MAIN-2026-39"
     with pytest.raises(ValueError):
         dedup_path("CC-MAIN-2026-39/..", dev=False)
+
+
+def test_gold_documents_layout() -> None:
+    """One Delta table for every crawl (S6-02); dev runs under _dev (T11)."""
+    assert gold_documents_path(dev=False) == "s3a://corpus-gold/gold_documents"
+    assert gold_documents_path(dev=True) == "s3a://corpus-gold/_dev/gold_documents"
 
 
 # Language ID model (Story 3.1) ---------------------------------------------------------

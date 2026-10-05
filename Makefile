@@ -36,8 +36,8 @@ lint:
 
 # clean-* delete MinIO data and never touch corpus-bronze (invariant 1).
 # Deleting data needs an explicit: make clean-silver CONFIRM=yes
-# clean-gold empties corpus-gold, which also holds signature_store and dup_clusters:
-# they describe what gold contains, so they go with it.
+# clean-gold empties corpus-gold: the gold_documents Delta table and dedup's output
+# (dedup decides what gold contains, so it goes with it; S4-06).
 clean-silver:
 ifneq ($(CONFIRM),yes)
 	$(error clean-silver deletes all of corpus-silver. Rerun with CONFIRM=yes)
@@ -46,6 +46,6 @@ endif
 
 clean-gold:
 ifneq ($(CONFIRM),yes)
-	$(error clean-gold deletes all of corpus-gold (incl. signature_store, dup_clusters). Rerun with CONFIRM=yes)
+	$(error clean-gold deletes all of corpus-gold (gold_documents and dedup). Rerun with CONFIRM=yes)
 endif
 	docker compose run --rm --entrypoint /bin/sh minio-init /minio-clean.sh corpus-gold

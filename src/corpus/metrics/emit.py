@@ -1,10 +1,13 @@
-"""Write run telemetry: pipeline_runs (what the run was) and run_metrics (what it measured).
+"""Write run telemetry: pipeline_runs (what the run was), run_metrics (what it measured)
+and corpus_stats (what it put in gold).
 
-Every function is an upsert, so a retried task updates its rows instead of adding a
-second set (invariant 7, T8). Numbers here come only from real runs: nothing estimates.
+Every function is an upsert or a replace, so a retried task updates its rows instead of
+adding a second set (invariant 7, T8). Numbers here come only from real runs: nothing
+estimates.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from psycopg2.extensions import connection as Connection
 from psycopg2.extras import execute_values
@@ -88,3 +91,42 @@ def emit(
             rows,
         )
     return len(rows)
+
+
+# corpus_stats' measured columns, in table order (migration 006).
+CORPUS_STATS_COLUMNS = (
+    "language",
+    "quality_tier",
+    "documents",
+    "chars_total",
+    "words_total",
+    "mean_chars",
+    "first_fetch",
+    "last_fetch",
+)
+
+
+def replace_corpus_stats(
+    conn: Connection,
+    run_id: str,
+    crawl_id: str,
+    pipeline_version: str,
+    rows: Sequence[Mapping[str, Any]],
+) -> int:
+    """Record what this run put in gold, one row per language x tier (C21). Replaces the
+    run's rows in one transaction: a retry that no longer produces a tier leaves no
+    stale row behind. Returns how many rows were written."""
+    values = [
+        (run_id, crawl_id, *(row[name] for name in CORPUS_STATS_COLUMNS), pipeline_version)
+        for row in rows
+    ]
+    with conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM corpus_stats WHERE run_id = %s", (run_id,))
+        if values:
+            execute_values(
+                cur,
+                f"INSERT INTO corpus_stats (run_id, crawl_id, {', '.join(CORPUS_STATS_COLUMNS)},"
+                " pipeline_version) VALUES %s",
+                values,
+            )
+    return len(values)

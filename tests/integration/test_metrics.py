@@ -1,11 +1,18 @@
 """corpus.metrics.emit against real Postgres: upserts, so retries never double a number."""
 
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 from psycopg2.extensions import connection as Connection
 
-from corpus.metrics.emit import emit, finish_run, stamp_versions, start_run
+from corpus.metrics.emit import (
+    emit,
+    finish_run,
+    replace_corpus_stats,
+    stamp_versions,
+    start_run,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -18,6 +25,7 @@ def clean_rows(conn: Connection) -> Iterator[None]:
     yield
     with conn, conn.cursor() as cur:
         cur.execute("DELETE FROM run_metrics WHERE run_id = %s", (RUN_ID,))
+        cur.execute("DELETE FROM corpus_stats WHERE run_id = %s", (RUN_ID,))
         cur.execute("DELETE FROM pipeline_runs WHERE run_id = %s", (RUN_ID,))
 
 
@@ -131,3 +139,26 @@ def test_stamp_versions_records_logic_and_contract(conn: Connection, crawl_id: s
 def test_stamp_versions_refuses_an_unknown_run(conn: Connection) -> None:
     with pytest.raises(ValueError, match="no pipeline_runs row"):
         stamp_versions(conn, "no-such-run", "1", "silver_v1")
+
+
+def stats_row(language: str, tier: str, documents: int) -> dict[str, object]:
+    fetched = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
+    return {
+        "language": language, "quality_tier": tier, "documents": documents,
+        "chars_total": 10 * documents, "words_total": 2 * documents, "mean_chars": 10.0,
+        "first_fetch": fetched, "last_fetch": fetched,
+    }  # fmt: skip
+
+
+def test_corpus_stats_are_replaced_per_run(conn: Connection, crawl_id: str) -> None:
+    """A retry that no longer produces a tier must not leave its old row (C21, S6-07)."""
+    first = [stats_row("en", "high", 5), stats_row("ar", "medium", 2)]
+    assert replace_corpus_stats(conn, RUN_ID, crawl_id, "1", first) == 2
+    replace_corpus_stats(conn, RUN_ID, crawl_id, "1", [stats_row("en", "high", 7)])
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT language, quality_tier, documents, chars_total, pipeline_version"
+            " FROM corpus_stats WHERE run_id = %s",
+            (RUN_ID,),
+        )
+        assert cur.fetchall() == [("en", "high", 7, 70, "1")]

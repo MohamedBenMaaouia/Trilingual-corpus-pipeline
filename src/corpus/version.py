@@ -10,6 +10,8 @@ History:
    Sprint 4: first dedup (exact + MinHash 128, 5-grams, seed 42, LSH 16 x 8, pairs
    checked at t; DECISIONS S4-02 to S4-07). Added, not changed: nothing downstream
    existed, so no backfill (S4-06). Any later change to these bumps the version.
+   Sprint 6: first gold (gold_v1, DECISIONS S6-02 to S6-08). Added, not changed: no
+   backfill. The exclusion list is data, not logic: changing it does not bump (S6-05).
 """
 
 PIPELINE_VERSION = "1"

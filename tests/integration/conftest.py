@@ -36,7 +36,7 @@ def crawl_id(conn: Connection) -> Iterator[str]:
     # each `make test` left two runs stuck at 'running' in the real telemetry).
     with conn, conn.cursor() as cur:
         # Table names are constants of this file, never input; the value stays a parameter.
-        for table in ("segments", "run_metrics", "gate_results", "pipeline_runs"):
+        for table in ("segments", "run_metrics", "gate_results", "corpus_stats", "pipeline_runs"):
             cur.execute(f"DELETE FROM {table} WHERE crawl_id = %s", (fake,))
 
 

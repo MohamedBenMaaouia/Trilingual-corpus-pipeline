@@ -1,0 +1,9 @@
+# Gold's exclusion list (Story 6.4.1, D16: kept by hand; DECISIONS S6-05).
+#
+# One site per line. Pages of a listed site never reach gold, on the next gold run of
+# every crawl. "example.com" removes example.com and every subdomain of it
+# (www.example.com, blog.example.com); "alice.blogspot.com" removes only that blog.
+# Lines starting with # and blank lines are ignored. Lowercase ASCII (punycode for
+# non-Latin names), no scheme, path or port. A bare suffix (com, co.uk) is refused.
+#
+# To add a site: add a line, commit it with the request's reference, rerun gold.

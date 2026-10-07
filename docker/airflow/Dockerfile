@@ -37,9 +37,10 @@ COPY --from=spark \
      /opt/corpus-venv/lib/python3.11/site-packages/pyspark/jars/delta-storage-3.3.3.jar \
      /opt/corpus-venv/lib/python3.11/site-packages/pyspark/jars/
 
+# Built as a wheel and installed (Story 7.3): the driver runs the image's own copy.
 COPY src ./src
 RUN --mount=type=cache,target=/uv-cache \
-    UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark
+    UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark --no-editable
 
 # Soda Core in a third virtualenv: it pins its own versions of shared libraries,
 # so it must not share an environment with Airflow or with corpus (plan, S1).

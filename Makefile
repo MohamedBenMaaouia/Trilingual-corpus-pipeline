@@ -1,11 +1,18 @@
 # Thin wrappers around docker compose and uv: no shell-specific syntax,
 # so the same targets work from PowerShell, cmd or Git Bash.
 
-.PHONY: up down logs build migrate test lint clean-silver clean-gold
+.PHONY: up up-prod down logs build migrate test lint clean-silver clean-gold
 
 # Start every service in the background; --wait blocks until healthchecks pass.
+# Development mode: docker-compose.override.yml mounts the live src/ (S7-04).
 up:
 	docker compose up -d --wait
+
+# Production mode (Story 7.3): docker-compose.yml alone, without the development
+# override, so every job runs the wheel built into the images, never the mounted src/.
+# Rebuilds the images from the current source first. make up returns to development mode.
+up-prod:
+	docker compose -f docker-compose.yml up -d --wait --build
 
 # Stop and remove containers. Named volumes (MinIO, Postgres data) are kept.
 down:

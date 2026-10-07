@@ -67,6 +67,11 @@ def apply_migrations() -> list[str]:
     return applied
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point: python -m corpus.db, or the corpus-migrate script (Story 7.3)."""
     done = apply_migrations()
     print("applied: " + ", ".join(done) if done else "nothing to do, schema is up to date")
+
+
+if __name__ == "__main__":
+    main()

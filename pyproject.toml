@@ -23,6 +23,18 @@ dependencies = [
     "phonenumbers>=8.13",       # phone numbers found and validated for PII redaction (S3, D9)
 ]
 
+# One command per job (Story 7.3): what a wheel install offers, and what Databricks'
+# wheel tasks call in Sprint 10. Locally the DAG runs the same code as python -m.
+[project.scripts]
+corpus-migrate = "corpus.db:main"
+corpus-acquire = "corpus.jobs.acquire:main"
+corpus-download = "corpus.jobs.download:main"
+corpus-gate = "corpus.jobs.gate:main"
+corpus-silver = "corpus.jobs.run_silver:main"
+corpus-silver-v1 = "corpus.jobs.run_silver_v1:main"
+corpus-dedup = "corpus.jobs.run_dedup:main"
+corpus-gold = "corpus.jobs.run_gold:main"
+
 [project.optional-dependencies]
 spark = [
     "pyspark>=3.5,<3.6",        # 3.5 line: parity with Databricks 15.4 LTS

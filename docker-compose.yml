@@ -43,7 +43,6 @@ x-airflow: &airflow
     CORPUS_INGEST_S3_SECRET_KEY: ${CORPUS_INGEST_S3_SECRET_KEY:?set CORPUS_INGEST_S3_SECRET_KEY in .env}
   volumes:
     - ./dags:/opt/airflow/dags
-    - ./src:/opt/corpus/src:ro          # live code for the driver (editable install)
     - airflow-logs:/opt/airflow/logs    # shared: the scheduler writes task logs, the UI reads them
     - download-staging:/opt/corpus/staging  # in-progress downloads (S1); survives restarts
   depends_on:
@@ -136,8 +135,6 @@ services:
         condition: service_healthy
     ports:
       - "8081:8081"
-    volumes:
-      - ./src:/opt/corpus/src:ro   # live code for executors (editable install)
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8081/json/"]
       interval: 5s
@@ -152,8 +149,6 @@ services:
         condition: service_healthy
     ports:
       - "8082:8082"
-    volumes:
-      - ./src:/opt/corpus/src:ro
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8082/json/"]
       interval: 5s

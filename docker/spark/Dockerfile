@@ -59,14 +59,18 @@ ENV PATH=$SPARK_HOME/bin:$PATH \
     PYSPARK_PYTHON=/opt/corpus-venv/bin/python
 
 # Copied last so editing src/ only rebuilds this small layer, not the jars.
+# --no-editable: the project is built as a wheel and installed into site-packages
+# (Story 7.3): the image runs its own copy, never a mounted source. For development,
+# docker-compose.override.yml mounts src/ and puts it first on PYTHONPATH.
 COPY src ./src
 RUN --mount=type=cache,target=/uv-cache \
-    UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark
+    UV_CACHE_DIR=/uv-cache uv sync --frozen --no-dev --extra spark --no-editable
 
 # --- Stage "test": runtime + the dev group (pytest, chispa, ruff, mypy) ------
 # make test / make lint run here: same Linux, Java, Spark and jars as the cluster,
 # never PySpark on native Windows (T16). The dev tools never reach the cluster.
 FROM runtime AS test
+# Editable here on purpose: tests run against the checkout mounted at /opt/corpus.
 RUN --mount=type=cache,target=/uv-cache \
     UV_CACHE_DIR=/uv-cache uv sync --frozen --group dev --extra spark
 # Soda in its own virtualenv, exactly as in the Airflow image (DECISIONS S1-06), so the

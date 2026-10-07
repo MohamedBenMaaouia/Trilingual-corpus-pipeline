@@ -1,0 +1,23 @@
+# Development mode. Every `docker compose` command loads this file on its own (so make up,
+# make test, make migrate do): the live source in src/ is mounted and put first on
+# PYTHONPATH, so an edit reaches the next job without rebuilding an image.
+# Production mode leaves this file out (make up-prod = docker compose -f docker-compose.yml):
+# every job then runs the wheel installed in the images (Story 7.3, DECISIONS S7-04).
+services:
+  airflow-scheduler:  # every Spark driver runs here (client mode)
+    environment:
+      PYTHONPATH: /opt/corpus/src
+    volumes:
+      - ./src:/opt/corpus/src:ro
+
+  spark-worker-1:  # executors and their Python workers
+    environment:
+      PYTHONPATH: /opt/corpus/src
+    volumes:
+      - ./src:/opt/corpus/src:ro
+
+  spark-worker-2:
+    environment:
+      PYTHONPATH: /opt/corpus/src
+    volumes:
+      - ./src:/opt/corpus/src:ro

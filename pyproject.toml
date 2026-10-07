@@ -69,7 +69,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "dags/corpus_alerts.py"]  # the DAG itself imports Airflow: not here
 # Two conftest.py files (tests/ and tests/integration/) are distinct modules:
 # derive their names from these roots instead of treating both as "conftest".
 explicit_package_bases = true

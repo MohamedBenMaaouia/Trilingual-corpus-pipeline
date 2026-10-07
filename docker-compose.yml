@@ -27,6 +27,8 @@ x-airflow: &airflow
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?set AIRFLOW_JWT_SECRET in .env}
     # Airflow 3: running tasks report to the api-server, not to the database.
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
+    # The address a browser uses (host port 8090): links in alerts point there (S7-03).
+    AIRFLOW__API__BASE_URL: http://localhost:8090
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
@@ -41,6 +43,8 @@ x-airflow: &airflow
     CORPUS_S3_SECRET_KEY: ${CORPUS_S3_SECRET_KEY:?set CORPUS_S3_SECRET_KEY in .env}
     CORPUS_INGEST_S3_ACCESS_KEY: ${CORPUS_INGEST_S3_ACCESS_KEY:?set CORPUS_INGEST_S3_ACCESS_KEY in .env}
     CORPUS_INGEST_S3_SECRET_KEY: ${CORPUS_INGEST_S3_SECRET_KEY:?set CORPUS_INGEST_S3_SECRET_KEY in .env}
+    # Failure alerts (D13, S7-03): a Discord or Slack webhook URL; empty = log only.
+    CORPUS_ALERT_WEBHOOK_URL: ${CORPUS_ALERT_WEBHOOK_URL:-}
   volumes:
     - ./dags:/opt/airflow/dags
     - airflow-logs:/opt/airflow/logs    # shared: the scheduler writes task logs, the UI reads them

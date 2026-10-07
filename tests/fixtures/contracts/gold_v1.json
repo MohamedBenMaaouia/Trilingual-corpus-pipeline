@@ -1,0 +1,111 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "doc_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "domain",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "crawl_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "fetch_date",
+      "type": "timestamp",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "language",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "language_conf",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "text",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "char_count",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "word_count",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "quality_tier",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "quality_score",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pii_redacted",
+      "type": "boolean",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pii_types",
+      "type": {
+        "type": "array",
+        "elementType": "string",
+        "containsNull": true
+      },
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "cluster_size",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "schema_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pipeline_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
+}

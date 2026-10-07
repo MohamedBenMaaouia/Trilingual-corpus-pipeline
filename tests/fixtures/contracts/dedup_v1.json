@@ -1,0 +1,47 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "doc_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "language",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "cluster_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "cluster_size",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "duplicate_type",
+      "type": "string",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "schema_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pipeline_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
+}

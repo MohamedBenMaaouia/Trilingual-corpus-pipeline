@@ -1,0 +1,55 @@
+# CI (Story 7.4, DECISIONS S7-05): every push to main and every pull request.
+# Each step is a function of .github/ci.sh, which a developer can also run locally.
+# Runs on GitHub's machines: no crawl data, no pipeline run, only code and tests.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.11"  # as in the images
+
+      - name: Throwaway .env (random values, nothing real)
+        run: bash .github/ci.sh env
+
+      - name: Build the test image
+        run: bash .github/ci.sh build
+
+      - name: Start Postgres and MinIO
+        run: bash .github/ci.sh services
+
+      - name: Apply the database migrations
+        run: bash .github/ci.sh migrate
+
+      - name: Lint (ruff, ruff format, mypy)
+        run: bash .github/ci.sh lint
+
+      - name: Schema contract check
+        run: bash .github/ci.sh contracts
+
+      - name: Tests with coverage (unit, integration, golden)
+        run: bash .github/ci.sh test
+
+      - name: Build the wheel and check what it ships
+        run: bash .github/ci.sh wheel
+
+      - name: Stop the stack
+        if: always()
+        run: bash .github/ci.sh down

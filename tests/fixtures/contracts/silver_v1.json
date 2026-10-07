@@ -1,0 +1,175 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "doc_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "domain",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "crawl_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "segment_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "fetch_date",
+      "type": "timestamp",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "content_length",
+      "type": "long",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "cc_language",
+      "type": "string",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "language",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "language_detected",
+      "type": "string",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "language_conf",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "text",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "char_count",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "word_count",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "mean_word_length",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "symbol_to_word_ratio",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "stopword_ratio",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "repeated_line_ratio",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "ellipsis_line_ratio",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "boilerplate_lines_removed",
+      "type": "long",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "quality_tier",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "quality_score",
+      "type": "double",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "reject_reasons",
+      "type": {
+        "type": "array",
+        "elementType": "string",
+        "containsNull": true
+      },
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "pii_redacted",
+      "type": "boolean",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pii_types",
+      "type": {
+        "type": "array",
+        "elementType": "string",
+        "containsNull": true
+      },
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "schema_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "pipeline_version",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
+}

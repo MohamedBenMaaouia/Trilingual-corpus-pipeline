@@ -1,0 +1,8 @@
+# CI (Story 7.4, DECISIONS S7-05): docker compose -f docker-compose.yml -f docker-compose.ci.yml.
+# Only Postgres, MinIO and the test runner are used. No port is published, so the same
+# commands can also run on a developer's machine beside their own stack (project -p).
+services:
+  minio:
+    ports: !reset []
+  postgres:
+    ports: !reset []

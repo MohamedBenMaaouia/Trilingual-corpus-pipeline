@@ -1,0 +1,19 @@
+{
+  "_about": "Words the test language model (tests/conftest.py) is trained on and the golden pages (tests/golden) are built from. Stopwords are those of src/corpus/resources/stopwords, so the quality rules count them. Made up for tests: no page of the web is reproduced.",
+  "en": {
+    "stopwords": ["the", "be", "to", "of", "and", "that", "have", "with"],
+    "words": ["river", "garden", "market", "window", "teacher", "village", "morning", "journey", "kitchen", "library", "mountain", "harbor", "festival", "painter", "engine", "bridge", "lantern", "orchard", "meadow", "forest", "station", "captain", "student", "letter", "museum", "theater", "bakery", "castle", "valley", "island", "farmer", "doctor", "singer", "writer", "planet", "ocean", "desert", "winter", "summer", "autumn", "silver", "copper", "cotton", "timber", "pepper", "ginger", "coffee", "butter", "cherry", "apple", "lemon", "garlic", "carrot", "potato", "tomato", "button", "pocket", "ladder", "mirror", "street"]
+  },
+  "fr": {
+    "stopwords": ["le", "la", "les", "de", "des", "et", "est", "que"],
+    "words": ["rivière", "jardin", "marché", "fenêtre", "enseignant", "hameau", "matinée", "voyage", "cuisine", "bibliothèque", "montagne", "quai", "fête", "peintre", "moteur", "pont", "lanterne", "verger", "prairie", "forêt", "gare", "capitaine", "étudiant", "lettre", "musée", "théâtre", "boulangerie", "château", "vallée", "île", "agriculteur", "médecin", "chanteur", "écrivain", "planète", "océan", "désert", "hiver", "été", "automne", "argent", "cuivre", "coton", "bois", "poivre", "gingembre", "café", "beurre", "cerise", "pomme", "citron", "ail", "carotte", "tomate", "bouton", "poche", "échelle", "miroir", "chemin", "maison"]
+  },
+  "ar": {
+    "stopwords": ["في", "من", "على", "إلى", "أن", "عن", "مع", "هذا"],
+    "words": ["نهر", "حديقة", "سوق", "نافذة", "معلم", "قرية", "صباح", "رحلة", "مطبخ", "مكتبة", "جبل", "ميناء", "مهرجان", "رسام", "محرك", "جسر", "فانوس", "بستان", "مرج", "غابة", "محطة", "قبطان", "طالب", "رسالة", "متحف", "مسرح", "مخبز", "قلعة", "وادي", "جزيرة", "مزارع", "طبيب", "مغني", "كاتب", "كوكب", "محيط", "صحراء", "شتاء", "صيف", "خريف", "ربيع", "فضة", "نحاس", "قطن", "خشب", "فلفل", "زنجبيل", "قهوة", "زبدة", "كرز", "تفاح", "ليمون", "ثوم", "جزر", "بطاطس", "طماطم", "زر", "جيب", "سلم", "مرآة"]
+  },
+  "de": {
+    "stopwords": ["der", "die", "das", "und", "ist", "nicht", "ein", "mit"],
+    "words": ["Fluss", "Garten", "Markt", "Fenster", "Lehrer", "Dorf", "Morgen", "Reise", "Küche", "Bibliothek", "Berg", "Hafen", "Brücke", "Laterne", "Wiese", "Wald", "Bahnhof", "Kapitän", "Schüler", "Brief", "Bäckerei", "Schloss", "Tal", "Insel", "Bauer", "Arzt", "Sänger", "Schriftsteller", "Winter", "Sommer"]
+  }
+}

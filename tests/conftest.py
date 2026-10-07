@@ -1,9 +1,13 @@
 """Fixtures shared by every test. pytest finds this file automatically."""
 
+import json
+import random
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+import fasttext
 import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructField, StructType
@@ -12,6 +16,7 @@ from corpus.schemas.dedup_v1 import DEDUP_V1
 from corpus.schemas.gold_v1 import GOLD_V1
 from corpus.schemas.silver_v1 import SILVER_V1
 from corpus.session import DELTA_CONF
+from corpus.silver.language import MODEL_FILE
 
 CRAWL = "CC-MAIN-2026-39"
 FETCHED = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
@@ -107,3 +112,59 @@ def dedup_v1_batch(spark: SparkSession) -> Batch:
 def gold_v1_batch(spark: SparkSession) -> Batch:
     """gold_v1 rows from their changes, e.g. [{"doc_id": "a", "crawl_id": "CC-MAIN-2026-40"}]."""
     return _batch(spark, GOLD_V1, _gold_v1_row)
+
+
+# --- The test language model ----------------------------------------------------------
+
+VOCABULARY_FILE = Path(__file__).parent / "fixtures" / "lid_vocabulary.json"
+
+TOY_TRAINING = [
+    "__label__en the cat is on the table and the dog is in the garden",
+    "__label__fr le chat est sur la table et le chien est dans le jardin",
+    "__label__de die katze ist auf dem tisch und der hund ist im garten",
+]
+
+
+def vocabulary() -> dict[str, dict[str, list[str]]]:
+    """Per language: its stopwords and words (tests/fixtures/lid_vocabulary.json)."""
+    data: dict[str, Any] = json.loads(VOCABULARY_FILE.read_text(encoding="utf-8"))
+    return {lang: words for lang, words in data.items() if not lang.startswith("_")}
+
+
+def training_lines() -> list[str]:
+    """The toy sentences (S3-04), then 60 seeded sentences per language of the vocabulary
+    (S7-06: the golden pages are built from the same words, Arabic included)."""
+    rng = random.Random(42)
+    lines = TOY_TRAINING * 20
+    for lang, words in vocabulary().items():
+        pool = words["stopwords"] + words["words"]
+        lines += [f"__label__{lang} " + " ".join(rng.choices(pool, k=12)) for _ in range(60)]
+    return lines
+
+
+@pytest.fixture(scope="session")
+def toy_model(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """A toy fastText model (en, fr, ar, de), registered with Spark as lid.176.bin (S3-04).
+
+    Trained in well under a second, one thread, seed 42: the same model on every run.
+    Once per test session: Spark refuses a second, different file under the same name,
+    so every test that needs language ID shares this one.
+    """
+    folder = tmp_path_factory.mktemp("lid")
+    training = folder / "train.txt"
+    training.write_text("\n".join(training_lines()) + "\n", encoding="utf-8")
+    model = fasttext.train_supervised(
+        input=str(training),
+        epoch=25,
+        lr=1.0,
+        dim=8,
+        minn=0,
+        maxn=0,
+        bucket=0,
+        thread=1,
+        seed=42,
+        verbose=0,
+    )
+    path = folder / MODEL_FILE
+    model.save_model(str(path))
+    spark.sparkContext.addFile(str(path))

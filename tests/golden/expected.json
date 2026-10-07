@@ -1,0 +1,871 @@
+{
+ "totals": {
+  "documents": 100,
+  "dead_letters": 1,
+  "lines_removed_domain": 26,
+  "tiers": {
+   "high": 72.0,
+   "medium": 10.0,
+   "rejected": 18.0
+  },
+  "exact_duplicates": 4.0,
+  "near_duplicates": 3.0,
+  "excluded": 2.0,
+  "gold": 73.0,
+  "stats": {
+   "ar/high": 18,
+   "ar/medium": 3,
+   "en/high": 27,
+   "en/medium": 4,
+   "fr/high": 18,
+   "fr/medium": 3
+  }
+ },
+ "pages": {
+  "ellipsis": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_many_ellipsis_lines"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "emptied": {
+   "language": "other",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "exact-ar-copy-0": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "exact",
+   "gold_text": null
+  },
+  "exact-ar-original": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "d2a8475693af2f2e"
+  },
+  "exact-en-copy-0": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "exact",
+   "gold_text": null
+  },
+  "exact-en-copy-1": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "exact",
+   "gold_text": null
+  },
+  "exact-en-original": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "75fd6957c29b6589"
+  },
+  "exact-fr-copy-0": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "exact",
+   "gold_text": null
+  },
+  "exact-fr-original": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "037ce793ea610add"
+  },
+  "excluded-0": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "excluded-1": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "german-0": {
+   "language": "other",
+   "tier": "rejected",
+   "reasons": [
+    "language_not_targeted"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "german-1": {
+   "language": "other",
+   "tier": "rejected",
+   "reasons": [
+    "language_not_targeted"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "german-2": {
+   "language": "other",
+   "tier": "rejected",
+   "reasons": [
+    "language_not_targeted"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "long-words": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "word_length_out_of_range"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "medium-ar-0": {
+   "language": "ar",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "3c1cc4a8634d8dc3"
+  },
+  "medium-ar-1": {
+   "language": "ar",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "3b64724bc38ea01a"
+  },
+  "medium-ar-2": {
+   "language": "ar",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "f6c331f47fe9ef62"
+  },
+  "medium-en-0": {
+   "language": "en",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "a7e5f941fbbf831f"
+  },
+  "medium-en-1": {
+   "language": "en",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "4aa6faa176142cc7"
+  },
+  "medium-en-2": {
+   "language": "en",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "0e5a2f2151d3153e"
+  },
+  "medium-en-3": {
+   "language": "en",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "472245b82c4da8e9"
+  },
+  "medium-fr-0": {
+   "language": "fr",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "8d0ada78527b24a8"
+  },
+  "medium-fr-1": {
+   "language": "fr",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "fe866162bb12f5f7"
+  },
+  "medium-fr-2": {
+   "language": "fr",
+   "tier": "medium",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "2610148ecc75dd85"
+  },
+  "mixed-0": {
+   "language": "fr",
+   "tier": "rejected",
+   "reasons": [
+    "language_low_confidence",
+    "too_few_stopwords"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "mixed-1": {
+   "language": "fr",
+   "tier": "rejected",
+   "reasons": [
+    "language_low_confidence",
+    "too_few_stopwords"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "near-ar-copy": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "near",
+   "gold_text": null
+  },
+  "near-ar-original": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "6360038cb525bfb1"
+  },
+  "near-en-copy": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "near",
+   "gold_text": null
+  },
+  "near-en-original": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "7094b6bb0c2032e8"
+  },
+  "near-fr-copy": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": "near",
+   "gold_text": null
+  },
+  "near-fr-original": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "69c91b5ff796de67"
+  },
+  "no-stopwords": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_stopwords"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "repeated": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_many_repeated_lines"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-ar-0": {
+   "language": "ar",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-ar-1": {
+   "language": "ar",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-en-0": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-en-1": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-en-2": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-fr-0": {
+   "language": "fr",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "short-fr-1": {
+   "language": "fr",
+   "tier": "rejected",
+   "reasons": [
+    "too_few_words"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  },
+  "single-ar-0": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "7bf64184d4467fc0"
+  },
+  "single-ar-1": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "316731f97872f60e"
+  },
+  "single-ar-2": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "8f903ecd546ed2fb"
+  },
+  "single-ar-3": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "677273732dcd27f1"
+  },
+  "single-ar-4": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "42fc7002b0596607"
+  },
+  "single-ar-5": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "9505e44f28389cfb"
+  },
+  "single-ar-6": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "aad7745af55faf38"
+  },
+  "single-ar-7": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "540b41d2cae47aa3"
+  },
+  "single-en-0": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "06fffe92abc1fac6"
+  },
+  "single-en-1": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "1a240b9610ebbc10"
+  },
+  "single-en-10": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "55e92e5c3c22a4f3"
+  },
+  "single-en-11": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "bc1895911b4afeb6"
+  },
+  "single-en-12": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "916ee8580fc5efae"
+  },
+  "single-en-13": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "acd7318b28286d9f"
+  },
+  "single-en-14": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "4f73df6abc58c104"
+  },
+  "single-en-2": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "2b9f4f610d750c32"
+  },
+  "single-en-3": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "a5b2b84f90711872"
+  },
+  "single-en-4": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "4b7de19d191e1ba3"
+  },
+  "single-en-5": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "0f3e451f2b2b8230"
+  },
+  "single-en-6": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "5801a2ade54ab428"
+  },
+  "single-en-7": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "a1bb701f42f0f83f"
+  },
+  "single-en-8": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "0c45722c0cc1073f"
+  },
+  "single-en-9": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "dec972474b9fe12e"
+  },
+  "single-fr-0": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "6b8c3c0e7dbc4e1c"
+  },
+  "single-fr-1": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "7f2060ba33746a9c"
+  },
+  "single-fr-2": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "a11ec38c8ff0b33f"
+  },
+  "single-fr-3": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "dd3ef659e1871dcd"
+  },
+  "single-fr-4": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "97922b176f4b6ede"
+  },
+  "single-fr-5": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "c217c8776d056455"
+  },
+  "single-fr-6": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "70e397f7914d195c"
+  },
+  "single-fr-7": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "ed7e75e375361654"
+  },
+  "site-ar-0": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": [
+    "phone"
+   ],
+   "duplicate": null,
+   "gold_text": "8ce14519f7c9bb90"
+  },
+  "site-ar-1": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "8a74d699d8437a14"
+  },
+  "site-ar-2": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "10cff23978588c70"
+  },
+  "site-ar-3": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "4ed61794ed123b7b"
+  },
+  "site-ar-4": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "3d2acaf8fe5b3b2d"
+  },
+  "site-ar-5": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "cb8c07fb8056d875"
+  },
+  "site-ar-6": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "69fdca29f1175374"
+  },
+  "site-ar-7": {
+   "language": "ar",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "5b4d40066da86ddc"
+  },
+  "site-en-0": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": [
+    "email",
+    "phone"
+   ],
+   "duplicate": null,
+   "gold_text": "7dbbd0d41f78802c"
+  },
+  "site-en-1": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "d5d6959cff615235"
+  },
+  "site-en-2": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "0e9d65be732f3449"
+  },
+  "site-en-3": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "e2130a0cf54ef986"
+  },
+  "site-en-4": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "0e147852a2cfbd02"
+  },
+  "site-en-5": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "db50989e8dfac44d"
+  },
+  "site-en-6": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "b58d01feadfc3389"
+  },
+  "site-en-7": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "9ceff46c2c7f7830"
+  },
+  "site-en-8": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "f45a162d411c8516"
+  },
+  "site-en-9": {
+   "language": "en",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "af6869a10363a9ca"
+  },
+  "site-fr-0": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": [
+    "email"
+   ],
+   "duplicate": null,
+   "gold_text": "3818db1c8c0bd3da"
+  },
+  "site-fr-1": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "59bc4331c1fb332d"
+  },
+  "site-fr-2": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "b20bc78d3b203b82"
+  },
+  "site-fr-3": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "34bbedadd140e747"
+  },
+  "site-fr-4": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "76e1d36611ca4c54"
+  },
+  "site-fr-5": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "f8dcabf264c0b4bb"
+  },
+  "site-fr-6": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "3b50d0f3d3bba36d"
+  },
+  "site-fr-7": {
+   "language": "fr",
+   "tier": "high",
+   "reasons": null,
+   "pii": null,
+   "duplicate": null,
+   "gold_text": "872090a45455aeaf"
+  },
+  "symbols": {
+   "language": "en",
+   "tier": "rejected",
+   "reasons": [
+    "too_many_symbols"
+   ],
+   "pii": null,
+   "duplicate": null,
+   "gold_text": null
+  }
+ }
+}
